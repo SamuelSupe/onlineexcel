@@ -8,14 +8,14 @@
 
 ## 安装发布包
 
-从 [v0.1.0 Release](https://github.com/SamuelSupe/onlineexcel/releases/tag/v0.1.0) 下载 `onlineexcel-0.1.0.tgz`，在宿主应用中执行：
+在宿主应用中安装 [npm 包](https://www.npmjs.com/package/onlineexcel)：
 
 ```sh
-npm install ./onlineexcel-0.1.0.tgz
+npm install onlineexcel
 npx onlineexcel-copy-assets public/onlineexcel
 ```
 
-然后通过 `import { createWorkbook, mountEditor } from "onlineexcel"` 接入，并配置 `workerUrl: "/onlineexcel/worker.js"`。发布包包含 ESM、浏览器脚本、Worker、类型声明和 React/Vue 可选入口。当前通过 GitHub Release 分发，尚未发布到 npm registry；校验文件见 Release 的 `SHA256SUMS`。
+然后通过 `import { createWorkbook, mountEditor } from "onlineexcel"` 接入，并配置 `workerUrl: "/onlineexcel/worker.js"`。发布包包含 ESM、浏览器脚本、Worker、类型声明和 React/Vue 可选入口。也可以从 [GitHub Releases](https://github.com/SamuelSupe/onlineexcel/releases) 下载 `.tgz`，使用 `npm install ./onlineexcel-0.1.1.tgz` 安装；离线分发包的校验文件见对应 Release 的 `SHA256SUMS`。
 
 ## 本地运行
 

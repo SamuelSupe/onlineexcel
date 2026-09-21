@@ -1,11 +1,11 @@
 # 宿主集成与 SDK 契约
 
-这些接口在 0.1.0 开发包中提供。原有 API 保持可用；React 和 Vue 是独立可选入口，核心包仍只依赖 fflate 和 saxes。
+这些接口在 0.1.1 开发包中提供。原有 API 保持可用；React 和 Vue 是独立可选入口，核心包仍只依赖 fflate 和 saxes。
 
 ## 安装与 Worker 部署
 
 ```sh
-npm install /path/to/onlineexcel-0.1.0.tgz
+npm install onlineexcel
 npx onlineexcel-copy-assets public/onlineexcel
 ```
 

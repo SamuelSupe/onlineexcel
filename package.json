@@ -1,6 +1,6 @@
 {
   "name": "onlineexcel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embeddable browser spreadsheet with a self-contained calculation engine",
   "repository": {
     "type": "git",
@@ -10,7 +10,14 @@
   "bugs": {
     "url": "https://github.com/SamuelSupe/onlineexcel/issues"
   },
-  "keywords": ["spreadsheet", "excel", "xlsx", "typescript", "canvas", "web-worker"],
+  "keywords": [
+    "spreadsheet",
+    "excel",
+    "xlsx",
+    "typescript",
+    "canvas",
+    "web-worker"
+  ],
   "type": "module",
   "main": "./dist/onlineexcel.js",
   "module": "./dist/index.js",
@@ -95,5 +102,9 @@
     "vue": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   }
 }

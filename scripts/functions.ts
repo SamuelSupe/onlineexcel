@@ -1,10 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import { listFunctions } from "../src/formula/functions";
+import { LIBRARY_VERSION } from "../src/runtime/protocol";
 const functions = listFunctions();
 await writeFile(
   "docs/functions.json",
   JSON.stringify(
-    { schemaVersion: 1, libraryVersion: "0.1.0", functions },
+    { schemaVersion: 1, libraryVersion: LIBRARY_VERSION, functions },
     null,
     2,
   ) + "\n",

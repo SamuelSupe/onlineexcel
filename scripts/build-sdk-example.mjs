@@ -6,7 +6,8 @@ const destination = resolve(".cache/sdk-example");
 await mkdir(destination, { recursive: true });
 await cp("examples/installed", destination, { recursive: true });
 const pkg = JSON.parse(await readFile(destination + "/package.json", "utf8"));
-const archive = await readFile("artifacts/onlineexcel-0.1.0.tgz");
+const { version } = JSON.parse(await readFile("package.json", "utf8"));
+const archive = await readFile(`artifacts/onlineexcel-${version}.tgz`);
 const archiveName =
   "onlineexcel-" +
   createHash("sha256").update(archive).digest("hex").slice(0, 16) +

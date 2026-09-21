@@ -7,7 +7,7 @@
     "build": "npm run assets && vite build --base=./"
   },
   "dependencies": {
-    "onlineexcel": "file:../../artifacts/onlineexcel-0.1.0.tgz",
+    "onlineexcel": "0.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "vue": "^3.5.0"

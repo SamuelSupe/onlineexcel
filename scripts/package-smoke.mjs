@@ -1,8 +1,12 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { execFileSync } from "node:child_process";
-const archive = resolve(process.argv[2] ?? "artifacts/onlineexcel-0.1.0.tgz");
+const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+const requested = process.argv[2] ?? `artifacts/onlineexcel-${version}.tgz`;
+const packageSpec = requested.startsWith("onlineexcel@")
+  ? requested
+  : resolve(requested);
 const directory = mkdtempSync(join(tmpdir(), "onlineexcel-package-"));
 execFileSync(
   "npm",
@@ -13,7 +17,8 @@ execFileSync(
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
-    archive,
+    "--registry=https://registry.npmjs.org/",
+    packageSpec,
   ],
   { stdio: "inherit" },
 );
