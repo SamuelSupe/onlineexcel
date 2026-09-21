@@ -1,0 +1,18 @@
+{
+  "name": "onlineexcel-installed-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "onlineexcel-copy-assets public/onlineexcel && node prepare.mjs",
+    "build": "npm run assets && vite build --base=./"
+  },
+  "dependencies": {
+    "onlineexcel": "file:../../artifacts/onlineexcel-0.1.0.tgz",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

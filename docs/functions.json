@@ -1,0 +1,1506 @@
+{
+  "schemaVersion": 1,
+  "libraryVersion": "0.1.0",
+  "functions": [
+    {
+      "name": "ABS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ACOS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ACOSH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ADDRESS",
+      "minArgs": 2,
+      "maxArgs": 5,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "row_num, column_num, [abs_num], [a1], [sheet_text]"
+    },
+    {
+      "name": "AND",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "ASIN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ASINH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ATAN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ATAN2",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "x_num, y_num"
+    },
+    {
+      "name": "ATANH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "AVEDEV",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "AVERAGE",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "AVERAGEIF",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "range, criteria, [average_range]"
+    },
+    {
+      "name": "AVERAGEIFS",
+      "minArgs": 3,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "average_range, criteria_range1, criteria1, ..."
+    },
+    {
+      "name": "CEILING.MATH",
+      "minArgs": 1,
+      "maxArgs": 3,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, [significance], [mode]"
+    },
+    {
+      "name": "CHAR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "notes": "Uses Unicode code points 1–255; platform-specific legacy code pages are not emulated.",
+      "signature": "value"
+    },
+    {
+      "name": "CHOOSE",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "index_num, value1, ..."
+    },
+    {
+      "name": "CHOOSECOLS",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, col_num1, ..."
+    },
+    {
+      "name": "CHOOSEROWS",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, row_num1, ..."
+    },
+    {
+      "name": "CLEAN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "CODE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "COLUMN",
+      "minArgs": 0,
+      "maxArgs": 1,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "[reference]"
+    },
+    {
+      "name": "COLUMNS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "array"
+    },
+    {
+      "name": "COMBIN",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, number_chosen"
+    },
+    {
+      "name": "CONCAT",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "text",
+      "elementwise": false,
+      "signature": "text1, ..."
+    },
+    {
+      "name": "CORREL",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array1, array2"
+    },
+    {
+      "name": "COS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "COSH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "COUNT",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "COUNTA",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "COUNTBLANK",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value"
+    },
+    {
+      "name": "COUNTIF",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "range, criteria"
+    },
+    {
+      "name": "COUNTIFS",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "criteria_range1, criteria1, ..."
+    },
+    {
+      "name": "COVARIANCE.P",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array1, array2"
+    },
+    {
+      "name": "COVARIANCE.S",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array1, array2"
+    },
+    {
+      "name": "DATE",
+      "minArgs": 3,
+      "maxArgs": 3,
+      "category": "date",
+      "elementwise": true,
+      "signature": "year, month, day"
+    },
+    {
+      "name": "DATEVALUE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "notes": "Accepts ISO YYYY-MM-DD; ambiguous locale-dependent strings are rejected.",
+      "signature": "value"
+    },
+    {
+      "name": "DAY",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "DAYS",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "date",
+      "elementwise": true,
+      "signature": "end_date, start_date"
+    },
+    {
+      "name": "DAYS360",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "date",
+      "elementwise": true,
+      "signature": "start_date, end_date, [method]"
+    },
+    {
+      "name": "DEGREES",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "DEVSQ",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "DROP",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, rows, [columns]"
+    },
+    {
+      "name": "EDATE",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "date",
+      "elementwise": true,
+      "signature": "start_date, months"
+    },
+    {
+      "name": "EFFECT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "nominal_rate, npery"
+    },
+    {
+      "name": "EOMONTH",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "date",
+      "elementwise": true,
+      "signature": "start_date, months"
+    },
+    {
+      "name": "EVEN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "EXACT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text1, text2"
+    },
+    {
+      "name": "EXP",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "FACT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "FALSE",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "logical",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "FILTER",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, include, [if_empty]"
+    },
+    {
+      "name": "FIND",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "text",
+      "elementwise": true,
+      "signature": "find_text, within_text, [start_num]"
+    },
+    {
+      "name": "FIXED",
+      "minArgs": 1,
+      "maxArgs": 3,
+      "category": "text",
+      "elementwise": true,
+      "signature": "number, [decimals], [no_commas]"
+    },
+    {
+      "name": "FLOOR.MATH",
+      "minArgs": 1,
+      "maxArgs": 3,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, [significance], [mode]"
+    },
+    {
+      "name": "FV",
+      "minArgs": 3,
+      "maxArgs": 5,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "rate, nper, pmt, [pv], [type]"
+    },
+    {
+      "name": "GCD",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "math",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "GEOMEAN",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "HARMEAN",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "HLOOKUP",
+      "minArgs": 3,
+      "maxArgs": 4,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "lookup_value, table_array, row_index_num, [range_lookup]"
+    },
+    {
+      "name": "HOUR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "HSTACK",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array1, ..."
+    },
+    {
+      "name": "IF",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "logical_test, value_if_true, [value_if_false]"
+    },
+    {
+      "name": "IFERROR",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "value, value_if_error"
+    },
+    {
+      "name": "IFNA",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "value, value_if_na"
+    },
+    {
+      "name": "IFS",
+      "minArgs": 2,
+      "maxArgs": 254,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "logical_test1, value1, ..."
+    },
+    {
+      "name": "INDEX",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "array, row_num, [column_num]"
+    },
+    {
+      "name": "INT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "INTERCEPT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "known_ys, known_xs"
+    },
+    {
+      "name": "IRR",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "financial",
+      "elementwise": false,
+      "signature": "values, [guess]"
+    },
+    {
+      "name": "ISBLANK",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISERR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISERROR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISEVEN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISLOGICAL",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISNA",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISNONTEXT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISNUMBER",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISODD",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISOWEEKNUM",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "ISTEXT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "LARGE",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array, k"
+    },
+    {
+      "name": "LCM",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "math",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "LEFT",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, [num_chars]"
+    },
+    {
+      "name": "LEN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "LN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "LOG",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, [base]"
+    },
+    {
+      "name": "LOG10",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "LOWER",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "MATCH",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "lookup_value, lookup_array, [match_type]"
+    },
+    {
+      "name": "MAX",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "MEDIAN",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "MID",
+      "minArgs": 3,
+      "maxArgs": 3,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, start_num, num_chars"
+    },
+    {
+      "name": "MIN",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "MINUTE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "MOD",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, divisor"
+    },
+    {
+      "name": "MODE.SNGL",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "MONTH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "MROUND",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, multiple"
+    },
+    {
+      "name": "N",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "NA",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "information",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "NETWORKDAYS",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "date",
+      "elementwise": false,
+      "signature": "start_date, end_date, [holidays]"
+    },
+    {
+      "name": "NOMINAL",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "effect_rate, npery"
+    },
+    {
+      "name": "NOT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "logical",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "NOW",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "date",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "NPER",
+      "minArgs": 3,
+      "maxArgs": 5,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "rate, pmt, pv, [fv], [type]"
+    },
+    {
+      "name": "NPV",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "financial",
+      "elementwise": false,
+      "signature": "rate, value1, ..."
+    },
+    {
+      "name": "NUMBERVALUE",
+      "minArgs": 1,
+      "maxArgs": 3,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, [decimal_separator], [group_separator]"
+    },
+    {
+      "name": "ODD",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "OR",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "PERCENTILE.INC",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array, k"
+    },
+    {
+      "name": "PI",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "math",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "PMT",
+      "minArgs": 3,
+      "maxArgs": 5,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "rate, nper, pv, [fv], [type]"
+    },
+    {
+      "name": "POWER",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, power"
+    },
+    {
+      "name": "PRODUCT",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "PROPER",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "PV",
+      "minArgs": 3,
+      "maxArgs": 5,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "rate, nper, pmt, [fv], [type]"
+    },
+    {
+      "name": "QUARTILE.INC",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array, quart"
+    },
+    {
+      "name": "QUOTIENT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "numerator, denominator"
+    },
+    {
+      "name": "RADIANS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "RAND",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "math",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "RANDBETWEEN",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": false,
+      "signature": "bottom, top"
+    },
+    {
+      "name": "RANK.EQ",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "number, ref, [order]"
+    },
+    {
+      "name": "RATE",
+      "minArgs": 3,
+      "maxArgs": 6,
+      "category": "financial",
+      "elementwise": false,
+      "signature": "nper, pmt, pv, [fv], [type], [guess]"
+    },
+    {
+      "name": "REPLACE",
+      "minArgs": 4,
+      "maxArgs": 4,
+      "category": "text",
+      "elementwise": true,
+      "signature": "old_text, start_num, num_chars, new_text"
+    },
+    {
+      "name": "REPT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, number_times"
+    },
+    {
+      "name": "RIGHT",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, [num_chars]"
+    },
+    {
+      "name": "ROUND",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, num_digits"
+    },
+    {
+      "name": "ROUNDDOWN",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, num_digits"
+    },
+    {
+      "name": "ROUNDUP",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, num_digits"
+    },
+    {
+      "name": "ROW",
+      "minArgs": 0,
+      "maxArgs": 1,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "[reference]"
+    },
+    {
+      "name": "ROWS",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "array"
+    },
+    {
+      "name": "RSQ",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "known_ys, known_xs"
+    },
+    {
+      "name": "SEARCH",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "text",
+      "elementwise": true,
+      "signature": "find_text, within_text, [start_num]"
+    },
+    {
+      "name": "SECOND",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "SEQUENCE",
+      "minArgs": 1,
+      "maxArgs": 4,
+      "category": "array",
+      "elementwise": false,
+      "signature": "rows, [columns], [start], [step]"
+    },
+    {
+      "name": "SIGN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "SIN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "SINH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "SLN",
+      "minArgs": 3,
+      "maxArgs": 3,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "cost, salvage, life"
+    },
+    {
+      "name": "SLOPE",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "known_ys, known_xs"
+    },
+    {
+      "name": "SMALL",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "array, k"
+    },
+    {
+      "name": "SORT",
+      "minArgs": 1,
+      "maxArgs": 4,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, [sort_index], [sort_order], [by_col]"
+    },
+    {
+      "name": "SORTBY",
+      "minArgs": 2,
+      "maxArgs": 255,
+      "category": "array",
+      "elementwise": false,
+      "notes": "Sort keys are vertical columns.",
+      "signature": "array, by_array1, [sort_order1], ..."
+    },
+    {
+      "name": "SQRT",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "STDEV.P",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "STDEV.S",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "SUBSTITUTE",
+      "minArgs": 3,
+      "maxArgs": 4,
+      "category": "text",
+      "elementwise": true,
+      "signature": "text, old_text, new_text, [instance_num]"
+    },
+    {
+      "name": "SUM",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "SUMIF",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "range, criteria, [sum_range]"
+    },
+    {
+      "name": "SUMIFS",
+      "minArgs": 3,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "sum_range, criteria_range1, criteria1, ..."
+    },
+    {
+      "name": "SUMPRODUCT",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "math",
+      "elementwise": false,
+      "signature": "array1, [array2], ..."
+    },
+    {
+      "name": "SUMSQ",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "SWITCH",
+      "minArgs": 3,
+      "maxArgs": 255,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "expression, value1, result1, ..., [default]"
+    },
+    {
+      "name": "SYD",
+      "minArgs": 4,
+      "maxArgs": 4,
+      "category": "financial",
+      "elementwise": true,
+      "signature": "cost, salvage, life, per"
+    },
+    {
+      "name": "T",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "TAKE",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, rows, [columns]"
+    },
+    {
+      "name": "TAN",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "TANH",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "math",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "TEXT",
+      "minArgs": 2,
+      "maxArgs": 2,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value, format_text"
+    },
+    {
+      "name": "TEXTJOIN",
+      "minArgs": 3,
+      "maxArgs": 255,
+      "category": "text",
+      "elementwise": false,
+      "signature": "delimiter, ignore_empty, text1, ..."
+    },
+    {
+      "name": "TIME",
+      "minArgs": 3,
+      "maxArgs": 3,
+      "category": "date",
+      "elementwise": true,
+      "signature": "hour, minute, second"
+    },
+    {
+      "name": "TIMEVALUE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "TODAY",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "date",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "TRANSPOSE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array"
+    },
+    {
+      "name": "TRIM",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "TRUE",
+      "minArgs": 0,
+      "maxArgs": 0,
+      "category": "logical",
+      "elementwise": false,
+      "signature": ""
+    },
+    {
+      "name": "TRUNC",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "math",
+      "elementwise": true,
+      "signature": "number, [num_digits]"
+    },
+    {
+      "name": "TYPE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "information",
+      "elementwise": false,
+      "signature": "value"
+    },
+    {
+      "name": "UNICHAR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "UNICODE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "UNIQUE",
+      "minArgs": 1,
+      "maxArgs": 3,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array, [by_col], [exactly_once]"
+    },
+    {
+      "name": "UPPER",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "signature": "value"
+    },
+    {
+      "name": "VALUE",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "text",
+      "elementwise": true,
+      "notes": "Invariant decimal syntax; locale-specific currency and date strings are not parsed.",
+      "signature": "value"
+    },
+    {
+      "name": "VAR.P",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "VAR.S",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "statistics",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "VLOOKUP",
+      "minArgs": 3,
+      "maxArgs": 4,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "lookup_value, table_array, col_index_num, [range_lookup]"
+    },
+    {
+      "name": "VSTACK",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "array",
+      "elementwise": false,
+      "signature": "array1, ..."
+    },
+    {
+      "name": "WEEKDAY",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "date",
+      "elementwise": true,
+      "signature": "serial_number, [return_type]"
+    },
+    {
+      "name": "WEEKNUM",
+      "minArgs": 1,
+      "maxArgs": 2,
+      "category": "date",
+      "elementwise": true,
+      "signature": "serial_number, [return_type]"
+    },
+    {
+      "name": "WORKDAY",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "date",
+      "elementwise": false,
+      "signature": "start_date, days, [holidays]"
+    },
+    {
+      "name": "XIRR",
+      "minArgs": 2,
+      "maxArgs": 3,
+      "category": "financial",
+      "elementwise": false,
+      "signature": "values, dates, [guess]"
+    },
+    {
+      "name": "XLOOKUP",
+      "minArgs": 3,
+      "maxArgs": 6,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode]"
+    },
+    {
+      "name": "XMATCH",
+      "minArgs": 2,
+      "maxArgs": 4,
+      "category": "lookup",
+      "elementwise": false,
+      "signature": "lookup_value, lookup_array, [match_mode], [search_mode]"
+    },
+    {
+      "name": "XNPV",
+      "minArgs": 3,
+      "maxArgs": 3,
+      "category": "financial",
+      "elementwise": false,
+      "signature": "rate, values, dates"
+    },
+    {
+      "name": "XOR",
+      "minArgs": 1,
+      "maxArgs": 255,
+      "category": "logical",
+      "elementwise": false,
+      "signature": "value1, ..."
+    },
+    {
+      "name": "YEAR",
+      "minArgs": 1,
+      "maxArgs": 1,
+      "category": "date",
+      "elementwise": true,
+      "signature": "value"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+body {
+  margin: 20px;
+  font: 14px system-ui;
+  color: #183d2a;
+}
+button {
+  padding: 8px 12px;
+}
+pre {
+  white-space: pre-wrap;
+  background: #eef5f0;
+  padding: 16px;
+}
+.editor,
+.framework {
+  height: 460px;
+  margin-top: 16px;
+}

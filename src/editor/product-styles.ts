@@ -1,0 +1,7 @@
+export const productCss = `
+.grid-layer{position:absolute;left:0;top:0;transform-origin:0 0}
+.zoom-control{display:flex;align-items:center;gap:6px;white-space:nowrap}.zoom-control select{max-width:78px;border:1px solid var(--oe-border);border-radius:4px;background:white;color:inherit}
+.persistence-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 14px;border-bottom:1px solid var(--oe-border);background:#f7faf8;font-size:12px;flex-shrink:0}.persistence-detail{flex:1;min-width:160px;overflow-wrap:anywhere;color:var(--oe-muted)}.persistence-bar[data-status=error]{background:#fff1ef}.persistence-bar[data-status=recovery]{background:#fff8e9}.persistence-bar button{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid var(--oe-border)}.persistence-bar button[hidden]{display:none}
+.diagnostics-dialog{width:660px}.issue-filters{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px;align-items:center}.issue-filters label{margin:0}.issue-list{max-height:42vh;overflow:auto}.issue-list h3{font-size:13px;margin:15px 0 6px}.issue-card{padding:12px;margin-bottom:8px;border:1px solid var(--oe-border);border-radius:6px}.issue-card p{line-height:1.6;margin:5px 0}.issue-card summary{cursor:pointer;color:var(--oe-muted)}.issue-card .issue-impact{font-weight:600}.issue-locate{display:flex;align-items:center;gap:5px;margin-top:8px;padding:5px 8px;border:1px solid var(--oe-border)}
+@media(max-width:700px){.issue-filters{grid-template-columns:1fr 1fr}.persistence-detail{flex-basis:100%}.zoom-control{gap:2px}}
+`;

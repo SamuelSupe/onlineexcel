@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-09-20T10:01:30.269Z",
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "rows": 100000,
+  "columns": 100,
+  "populatedCells": 1000000,
+  "formulaCells": 50000,
+  "loadMs": 564.67011,
+  "editP50Ms": 0.02895899999998619,
+  "editP95Ms": 1.127966000000015,
+  "dependencyRebuildMs": 187.7062689999999,
+  "fullRecalculateMs": 204.76691500000004,
+  "sortMs": 1302.026189,
+  "exportMs": 1410.077515,
+  "importMs": 1681.0400420000005,
+  "importCalculateMs": 654.0866129999995,
+  "xlsxBytes": 4285289,
+  "importedCells": 1000000,
+  "peakRssMiB": 2092.515625,
+  "memory": {
+    "rss": 2194161664,
+    "heapTotal": 1931051008,
+    "heapUsed": 1838019024,
+    "external": 58661082,
+    "arrayBuffers": 56102929
+  }
+}

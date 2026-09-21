@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OnlineExcel browser validation</title>
+    <style>
+      body {
+        font: 14px system-ui;
+        margin: 20px;
+        color: #183d2a;
+      }
+      button {
+        padding: 9px 15px;
+        margin-right: 12px;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #eef5f0;
+        padding: 16px;
+      }
+      #editor {
+        height: 720px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>OnlineExcel browser validation</h1>
+    <button id="run">Run integration checks</button
+    ><button id="perf">Run million-cell benchmark</button>
+    <pre id="results">Ready</pre>
+    <div id="editor"></div>
+    <script type="module" src="./qa.ts"></script>
+  </body>
+</html>

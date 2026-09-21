@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-09-20T10:02:00Z",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+  "viewport": {
+    "width": 1456,
+    "height": 481,
+    "dpr": 2
+  },
+  "loadMs": 2864.899999976158,
+  "editP50Ms": 21.599999964237213,
+  "editP95Ms": 23.30000001192093,
+  "scrollFps": 120.05602614458002,
+  "frameP95Ms": 9.699999988079071,
+  "windowErrors": []
+}
