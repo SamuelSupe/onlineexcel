@@ -11,7 +11,13 @@ export async function autoFit(
   axis: "row" | "column",
   signal: AbortSignal,
 ) {
-  const dateSystem = (await workbook.getMetadata()).dateSystem;
+  const metadata = await workbook.getMetadata();
+  const current = metadata.sheets.find(
+    (candidate) => candidate.id === sheet.id,
+  );
+  if (!current) throw new Error("Sheet not found");
+  sheet = current;
+  const dateSystem = metadata.dateSystem;
   const range = await workbook.getDataRegion(
     sheet.id,
     axis === "row"

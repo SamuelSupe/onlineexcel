@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
 import { WorkbookModel } from "../src/core/model";
-import { keyOf, parseRange } from "../src/core/address";
+import { address, keyOf, parseRange } from "../src/core/address";
 import {
   dataRegion,
   distinctValues,
@@ -8,6 +9,240 @@ import {
   navigationTarget,
 } from "../src/core/queries";
 import { paintCommand } from "../src/editor/format-painter";
+import type { Command } from "../src/core/types";
+
+it("captures chunked snapshots across edits, deletes, undo, rollback and structural changes", () => {
+  const model = new WorkbookModel({
+    sheets: [{ name: "Saved", rows: 12000, columns: 2 }],
+  });
+  const id = model.sheets[0].meta.id;
+  set(
+    model,
+    id,
+    "A1:A9000",
+    Array.from({ length: 9000 }, (_, r) => [r]),
+  );
+  const expected = model.snapshot(),
+    revision = model.revision;
+  const reader = model.openSnapshot();
+  const captured = reader.snapshot;
+  const append = () => {
+    const chunk = reader.read();
+    captured.sheets[chunk.sheetIndex]?.cells.push(...chunk.cells);
+    return chunk.done;
+  };
+  try {
+    append();
+    set(model, id, "A8000:B8000", [[42, 43]]);
+    model.execute([{ type: "clear", sheetId: id, range: parseRange("A8001") }]);
+    set(model, id, "A8001", [[99]]);
+    model.undo();
+    model.redo();
+    expect(() =>
+      model.execute([
+        {
+          type: "setValues",
+          sheetId: id,
+          range: parseRange("A8500"),
+          values: [[100]],
+        },
+        {
+          type: "setValues",
+          sheetId: id,
+          range: parseRange("C1"),
+          values: [[100]],
+        },
+      ]),
+    ).toThrow();
+    model.execute([
+      { type: "structure", sheetId: id, axis: "row", index: 0, count: 1 },
+    ]);
+    while (!append()) {
+      /* Consume the remaining bounded chunks. */
+    }
+    expect(reader.revision).toBe(revision);
+    expect(captured).toEqual(expected);
+  } finally {
+    reader.dispose();
+  }
+  expect(model.snapshot()).not.toEqual(expected);
+  const spills = new WorkbookModel();
+  const sheetId = spills.sheets[0].meta.id;
+  set(spills, sheetId, "B1", [["=SEQUENCE(2,2)"]]);
+  set(spills, sheetId, "A2", [["=SEQUENCE(2,2)"]]);
+  const values = spills.region(sheetId, parseRange("A1:C3")).cells;
+  const point = spills.openSnapshot();
+  try {
+    set(spills, sheetId, "A2", [["=SEQUENCE(2,2,5)"]]);
+    point.snapshot.sheets[0].cells.push(...point.read().cells);
+    const restored = new WorkbookModel({ snapshot: point.snapshot });
+    expect(restored.region(sheetId, parseRange("A1:C3")).cells).toEqual(values);
+  } finally {
+    point.dispose();
+  }
+});
+
+it("aggregates and clears a full-size sparse sheet without scanning empty coordinates", () => {
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      `
+    import assert from 'node:assert/strict';
+    import {WorkbookModel} from './src/core/model.ts';
+    import {parseRange, keyOf} from './src/core/address.ts';
+    const model = new WorkbookModel({sheets:[{name:'Sparse',rows:1048576,columns:16384},{name:'Summary'}]});
+    const [data, summary] = model.sheets.map(s=>s.meta.id);
+    const set = (id, range, values) => model.execute([{type:'setValues',sheetId:id,range:parseRange(range),values}]);
+    const get = (id,r,c) => model.engine.get(id,keyOf(r,c));
+    set(data,'A1',[['=SEQUENCE(2,2)']]);
+    set(data,'XFD1048576',[[9]]);
+    set(data,'C1:D1',[['=""',true]]);
+    const functions = ['SUM','COUNT','COUNTA','COUNTBLANK'];
+    set(summary,'A1:A4', functions.map(fn=>['='+fn+'(Sparse!A1:XFD1048576)']));
+    set(summary,'B1:B3', [['=COUNTIF(Sparse!A1:XFD1048576,0)'],['=SUMIF(Sparse!A1:XFD1048576,">2")'],['=COUNTIFS(Sparse!A1:XFD1048576,0,Sparse!A1:XFD1048576,"<>")']]);
+    const n = 1048576 * 16384;
+    assert.deepEqual([0,1,2,3].map(r=>get(summary,r,0)),[19,5,7,n-6]);
+    assert.deepEqual([0,1,2].map(r=>get(summary,r,1)),[n-7,16,0]);
+    set(summary,'C1:C3', [['=SUMPRODUCT(Sparse!A1:XFD1048576,Sparse!A1:XFD1048576)'],['=CONCAT(Sparse!A1:XFD1048576)'],['=CORREL(Sparse!A1:XFD1048576,Sparse!A1:XFD1048576)']]);
+    assert.equal(get(summary,0,2),111);
+    assert.equal(get(summary,1,2),'12TRUE349');
+    assert.deepEqual(get(summary,2,2),{error:'#CALC!'});
+    set(data,'A1',[['=SEQUENCE(3,2)']]);
+    assert.equal(get(summary,0,0),30);
+    model.undo();
+    assert.equal(get(summary,0,0),19);
+    const before = model.snapshot();
+    model.execute([{type:'clear',sheetId:data,range:parseRange('A1:XFD1048576'),formats:true}]);
+    assert.equal(model.sheet(data).cells.size,0);
+    assert.equal(get(summary,0,0),0);
+    model.undo();
+    assert.deepEqual(model.snapshot(),before);
+    assert.equal(get(data,1,1),4);
+    model.styles[0] = {locked:false};
+    model.execute([{type:'protect',sheetId:data,enabled:true}]);
+    model.execute([{type:'clear',sheetId:data,range:parseRange('A1:XFD1048576')}]);
+    assert.equal(get(summary,0,0),0);
+    model.undo();
+    assert.equal(get(summary,0,0),19);
+    const wide = new WorkbookModel({sheets:[{name:'Source',rows:1048576,columns:16384},{name:'Target',rows:1048576,columns:16384}]});
+    const [a,b] = wide.sheets.map(s=>s.meta.id), all = parseRange('A1:XFD1048576');
+    wide.execute([{type:'setValues',sheetId:a,range:parseRange('A2'),values:[[3]]},{type:'setValues',sheetId:a,range:parseRange('C500'),values:[[4]]},{type:'setValues',sheetId:b,range:parseRange('Z99999'),values:[[5]]}]);
+    const initial = wide.snapshot();
+    wide.execute([{type:'sort',sheetId:a,range:all,keys:[{column:0,direction:'asc'}]}]);
+    assert.equal(wide.sheet(a).cells.size,2);
+    assert.equal(wide.engine.get(a,keyOf(1048575,0)),3);
+    wide.undo();
+    assert.deepEqual(wide.snapshot(),initial);
+    wide.execute([{type:'copy',sheetId:a,range:all,targetSheetId:b,targetRow:0,targetColumn:0}]);
+    assert.equal(wide.sheet(b).cells.size,2);
+    assert.equal(wide.engine.get(b,keyOf(1,0)),3);
+    assert.equal(wide.engine.get(b,keyOf(499,2)),4);
+    assert.equal(wide.engine.get(b,keyOf(99998,25)),null);
+    wide.undo();
+    assert.deepEqual(wide.snapshot(),initial);
+    wide.execute([{type:'fill',sheetId:a,source:parseRange('A1:XFC1048576'),target:all}]);
+    assert.equal(wide.sheet(a).cells.size,3);
+    assert.equal(wide.engine.get(a,keyOf(1,16383)),3);
+    wide.undo();
+    assert.deepEqual(wide.snapshot(),initial);
+    assert.throws(()=>wide.execute([{type:'fill',sheetId:a,source:parseRange('A2'),target:all}]));
+    assert.deepEqual(wide.snapshot(),initial);
+    console.log('sparse operations passed');
+  `,
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  expect(output.trim()).toBe("sparse operations passed");
+}, 35000);
+
+it("settles spill dependencies longer than 32 anchors and refreshes them after edits", async () => {
+  const count = 64;
+  const model = new WorkbookModel({
+    sheets: [{ name: "Spills", rows: 4, columns: count + 1 }],
+  });
+  const id = model.sheets[0].meta.id;
+  set(model, id, `A1:${address(0, count - 1)}`, [
+    Array.from({ length: count }, (_, c) =>
+      c === count - 1
+        ? "=SEQUENCE(2,1,1)"
+        : `=SEQUENCE(2,1,${address(1, c + 1)})`,
+    ),
+  ]);
+  expect(get(model, id, "A2")).toBe(count + 1);
+  set(model, id, address(0, count - 1), [["=SEQUENCE(2,1,7)"]]);
+  expect(get(model, id, "A2")).toBe(count + 7);
+  model.undo();
+  expect(get(model, id, "A2")).toBe(count + 1);
+  model.engine.rebuild();
+  await model.engine.recalculateAsync(async () => {});
+  expect(get(model, id, "A2")).toBe(count + 1);
+  set(model, id, address(0, count - 1), [["=SEQUENCE(2,1,A2)"]]);
+  expect(get(model, id, "A1")).toEqual({ error: "#CYCLE!" });
+  model.undo();
+  expect(get(model, id, "A2")).toBe(count + 1);
+});
+
+it("calculates long forward dependencies without treating depth as a cycle", () => {
+  const count = 5000;
+  const model = new WorkbookModel({
+    sheets: [{ name: "Chain", rows: count + 1, columns: 3 }],
+  });
+  const id = model.sheets[0].meta.id;
+  set(model, id, `A1:A${count + 1}`, [
+    ...Array.from({ length: count }, (_, r) => [`=A${r + 2}+1`]),
+    [1],
+  ]);
+  expect(get(model, id, "A1")).toBe(count + 1);
+  set(model, id, `A${count + 1}`, [[7]]);
+  expect(get(model, id, "A1")).toBe(count + 7);
+  model.undo();
+  expect(get(model, id, "A1")).toBe(count + 1);
+  model.redo();
+  expect(get(model, id, "A1")).toBe(count + 7);
+  set(model, id, `A${count + 1}`, [["=A1"]]);
+  expect(get(model, id, "A1")).toEqual({ error: "#CYCLE!" });
+  model.undo();
+  expect(get(model, id, "A1")).toBe(count + 7);
+  set(model, id, "B1:C1", [["=IF(FALSE,C1,10)", "=B1+1"]]);
+  expect(get(model, id, "C1")).toBe(11);
+});
+
+it("batches small async commands while retaining cancellation, rollback and one-step undo", async () => {
+  const count = 5000;
+  const model = new WorkbookModel({
+    sheets: [{ name: "Import", rows: count, columns: 2 }],
+  });
+  const id = model.sheets[0].meta.id;
+  const before = model.snapshot();
+  const commands: Command[] = Array.from({ length: count }, (_, row) => ({
+    type: "setValues",
+    sheetId: id,
+    range: { r1: row, r2: row, c1: 0, c2: 0 },
+    values: [[row]],
+  }));
+  let checkpoints = 0;
+  await model.executeAsync(commands, async () => {
+    checkpoints++;
+  });
+  expect(checkpoints).toBeGreaterThan(1);
+  // Each callback yields an event-loop turn in the Worker. Per-cell yields stall large imports.
+  expect(checkpoints).toBeLessThan(100);
+  expect(get(model, id, "A5000")).toBe(4999);
+  model.undo();
+  expect(model.snapshot()).toEqual(before);
+  const revision = model.revision;
+  await expect(
+    model.executeAsync(commands, async () => {
+      throw new Error("cancelled");
+    }),
+  ).rejects.toThrow("cancelled");
+  expect(model.snapshot()).toEqual(before);
+  expect(model.revision).toBe(revision);
+});
 
 it("navigates visible data boundaries, blank gaps, empty formulas and spilled cells", () => {
   const { model, id } = setup();
@@ -381,7 +616,7 @@ describe("workbook operations", () => {
     expect(get(model, id, "C1")).toBe(10);
   });
   it("keeps filters derived while undo restores the edits that caused them", () => {
-    const { model, id } = setup();
+    const { model, id, second } = setup();
     set(model, id, "A1:B4", [
       ["name", "total"],
       ["c", 3],
@@ -408,6 +643,51 @@ describe("workbook operations", () => {
     model.undo();
     expect(get(model, id, "A2")).toBe("c");
     expect(model.sheet(id).meta.filter).toBeUndefined();
+    set(model, second, "A1", [[3]]);
+    set(model, id, "B2:B4", [["=Summary!A1"], ["=B2*2"], ["=B3+1"]]);
+    model.execute([
+      {
+        type: "filter",
+        sheetId: id,
+        range: parseRange("A1:B4"),
+        rules: [{ column: 1, operator: "gt", value: 4 }],
+      },
+    ]);
+    expect(model.sheet(id).meta.filteredRows).toEqual([1]);
+    set(model, second, "A1", [[1]]);
+    expect(model.sheet(id).meta.filteredRows).toEqual([1, 2, 3]);
+    model.undo();
+    expect(model.sheet(id).meta.filteredRows).toEqual([1]);
+    model.redo();
+    const before = model.snapshot();
+    expect(() =>
+      model.execute([
+        {
+          type: "setValues",
+          sheetId: second,
+          range: parseRange("A1"),
+          values: [[9]],
+        },
+        { type: "freeze", sheetId: id, rows: -1, columns: 0 },
+      ]),
+    ).toThrow();
+    expect(model.snapshot()).toEqual(before);
+    set(model, id, "E2", [["=SEQUENCE(3,1,Summary!A1)"]]);
+    model.execute([
+      {
+        type: "filter",
+        sheetId: id,
+        range: parseRange("A1:E5"),
+        rules: [{ column: 4, operator: "gt", value: 1 }],
+      },
+    ]);
+    expect(model.sheet(id).meta.filteredRows).toEqual([1, 4]);
+    set(model, second, "A1", [[0]]);
+    expect(model.sheet(id).meta.filteredRows).toEqual([1, 2, 4]);
+    set(model, id, "E2", [["=SEQUENCE(1,1,9)"]]);
+    expect(model.sheet(id).meta.filteredRows).toEqual([2, 3, 4]);
+    model.undo();
+    expect(model.sheet(id).meta.filteredRows).toEqual([1, 2, 4]);
   });
   it("reports unsupported functions and cycles without using imported caches", () => {
     const { model, id } = setup();

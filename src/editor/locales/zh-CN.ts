@@ -277,6 +277,8 @@ export default {
     array: "数组",
   },
   errors: {
+    "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX":
+      "CSV 内容过大，请缩小导出范围或使用 XLSX。",
     "Zoom must be between 0.5 and 2": "缩放比例必须在 50% 到 200% 之间",
     "Resolve saved draft recovery before saving":
       "请先选择恢复草稿或使用当前内容",

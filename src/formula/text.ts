@@ -127,12 +127,44 @@ define(
   },
   true,
 );
-define("CONCAT", 1, 255, "text", (a) => [...flatten(a)].map(text).join(""));
-define("TEXTJOIN", 3, 255, "text", (a) =>
-  [...flatten(a.slice(2))]
-    .filter((v) => !bool(a[1]) || (v !== null && v !== ""))
-    .map(text)
-    .join(text(a[0])),
+define(
+  "CONCAT",
+  1,
+  255,
+  "text",
+  (a) => {
+    let result = "";
+    for (const value of flatten(a, true)) {
+      const part = text(value);
+      if (result.length + part.length > 32767) return error("#VALUE!");
+      result += part;
+    }
+    return result;
+  },
+  false,
+  "Result is limited to 32,767 characters.",
+);
+define(
+  "TEXTJOIN",
+  3,
+  255,
+  "text",
+  (a) => {
+    const delimiter = text(a[0]),
+      ignoreEmpty = bool(a[1]);
+    let result = "",
+      first = true;
+    for (const value of flatten(a.slice(2), ignoreEmpty || delimiter === "")) {
+      if (ignoreEmpty && (value === null || value === "")) continue;
+      const part = (first ? "" : delimiter) + text(value);
+      if (result.length + part.length > 32767) return error("#VALUE!");
+      result += part;
+      first = false;
+    }
+    return result;
+  },
+  false,
+  "Result is limited to 32,767 characters.",
 );
 define("EXACT", 2, 2, "text", (a) => text(a[0]) === text(a[1]), true);
 define(

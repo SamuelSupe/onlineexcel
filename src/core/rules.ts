@@ -6,7 +6,14 @@ import type {
   SheetMeta,
   ValidationRule,
 } from "./types";
-import { address, contains, keyOf, validateRect } from "./address";
+import {
+  address,
+  columnOf,
+  contains,
+  keyOf,
+  rowOf,
+  validateRect,
+} from "./address";
 import { compare, isError } from "../formula/values";
 
 export function checkMergedWrite(
@@ -35,6 +42,14 @@ export function checkProtection(
   range: Rect,
 ) {
   if (!sheet.meta.protected) return;
+  if (model.styles[0]?.locked === false) {
+    for (const [key, cell] of model.cellsInRange(sheet, range))
+      if (model.styles[cell.style ?? 0]?.locked !== false)
+        throw new Error(
+          `Protected cell: ${address(rowOf(key), columnOf(key))}`,
+        );
+    return;
+  }
   for (let r = range.r1; r <= range.r2; r++)
     for (let c = range.c1; c <= range.c2; c++)
       if (

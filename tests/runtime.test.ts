@@ -48,7 +48,115 @@ class FakeWorker {
 }
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   functions.delete("SDK.DOUBLE");
+});
+it("imports and exports CSV through the Worker queue with bounded work and cancellation", async () => {
+  let sequence = 0,
+    progressCount = 0,
+    cancelOperation = "";
+  const pending = new Map<
+    number,
+    { resolve: (value: any) => void; reject: (error: Error) => void }
+  >();
+  const scope = {
+    onmessage: undefined as undefined | ((event: { data: any }) => void),
+    postMessage(data: any) {
+      if (data.event === "progress") {
+        if (data.data.operation === "importCsv") progressCount++;
+        if (data.data.operation === cancelOperation)
+          scope.onmessage!({ data: { id: sequence, operation: "cancel" } });
+      }
+      if (!data.id) return;
+      const response = pending.get(data.id)!;
+      pending.delete(data.id);
+      if (data.error)
+        response.reject(
+          Object.assign(new Error(data.error.message), data.error),
+        );
+      else response.resolve(data.result);
+    },
+  };
+  vi.stubGlobal("self", scope);
+  await import("../src/runtime/worker");
+  const request = (
+    operation: string,
+    args: Record<string, unknown> = {},
+  ): Promise<any> =>
+    new Promise((resolve, reject) => {
+      const id = ++sequence;
+      pending.set(id, { resolve, reject });
+      scope.onmessage!({ data: { id, operation, args } });
+    });
+  await request("init", {
+    protocolVersion: PROTOCOL_VERSION,
+    libraryVersion: LIBRARY_VERSION,
+    sheets: [{ name: "CSV", rows: 1048576, columns: 16384 }],
+  });
+  const sheetId = (await request("metadata")).sheets[0].id;
+  const text = Array.from(
+    { length: 4000 },
+    (_, r) => `${r % 100}%,2026-09-21`,
+  ).join("\n");
+  await request("importCsv", { sheetId, text, columns: ["percent", "date"] });
+  expect(progressCount).toBeLessThan(100);
+  const imported = await request("region", {
+    sheetId,
+    range: parseRange("A4000:B4000"),
+  });
+  expect(imported.cells[0]).toMatchObject({
+    value: 0.99,
+    style: { numberFormat: "0.00%" },
+  });
+  expect(imported.cells[1].style.numberFormat).toBe("yyyy-mm-dd");
+  await request("undo");
+  expect(
+    (await request("region", { sheetId, range: parseRange("A4000:B4000") }))
+      .cells,
+  ).toEqual([]);
+  const before = await request("snapshot");
+  const revision = (await request("metadata")).revision;
+  cancelOperation = "importCsv";
+  await expect(
+    request("importCsv", { sheetId, text, columns: ["percent", "date"] }),
+  ).rejects.toMatchObject({ code: "CANCELLED" });
+  expect(await request("snapshot")).toEqual(before);
+  expect((await request("metadata")).revision).toBe(revision);
+  cancelOperation = "";
+  await request("commands", {
+    commands: [
+      {
+        type: "setValues",
+        sheetId,
+        range: parseRange("A1:B2"),
+        values: [
+          ['a,"b', "line\n2"],
+          [null, "=SEQUENCE(1,2)"],
+        ],
+      },
+      {
+        type: "style",
+        sheetId,
+        range: parseRange("XFD1048576"),
+        style: { bold: true },
+      },
+    ],
+  });
+  const exported = await request("exportCsv", { sheetId });
+  expect(exported.text).toBe('\uFEFF"a,""b","line\n2",\r\n,1,2');
+  await expect(
+    request("exportCsv", { sheetId, range: parseRange("A1:XFD1048576") }),
+  ).rejects.toMatchObject({ code: "RESOURCE_LIMIT", sheetId });
+  const saved = await request("snapshot");
+  cancelOperation = "exportCsv";
+  await expect(
+    request("exportCsv", { sheetId, range: parseRange("A1:XFD100") }),
+  ).rejects.toMatchObject({ code: "CANCELLED" });
+  expect(await request("snapshot")).toEqual(saved);
+  cancelOperation = "";
+  expect(
+    (await request("exportCsv", { sheetId, range: parseRange("A2") })).text,
+  ).toBe('\uFEFF""');
 });
 describe("Optional persistence", () => {
   function workbook() {
@@ -57,10 +165,24 @@ describe("Optional persistence", () => {
     });
     const worker = new FakeWorker(),
       book = new Workbook(worker.asWorker());
+    const snapshots = new Map<
+      string,
+      ReturnType<WorkbookModel["openSnapshot"]>
+    >();
     worker.response = ({ operation, args }) => {
       if (operation === "metadata") return model.metadata();
-      if (operation === "savePoint")
-        return { snapshot: model.snapshot(), revision: model.revision };
+      if (operation === "snapshotOpen") {
+        const reader = model.openSnapshot();
+        snapshots.set(args.token, reader);
+        return { snapshot: reader.snapshot, revision: reader.revision };
+      }
+      if (operation === "snapshotRead")
+        return snapshots.get(args.token)!.read();
+      if (operation === "snapshotClose") {
+        snapshots.get(args.token)?.dispose();
+        snapshots.delete(args.token);
+        return;
+      }
       if (operation === "commands") {
         const change = model.execute(args.commands);
         worker.onmessage?.({ data: { event: "change", data: change } });
@@ -132,6 +254,34 @@ describe("Optional persistence", () => {
       persistence.dispose();
       await book.dispose();
     }
+  });
+  it("releases a captured snapshot when a scoped save is cancelled between chunks", async () => {
+    const { book, worker, id } = workbook();
+    await book.setValues(id, "A1", [[7]]);
+    const controller = new AbortController();
+    const response = worker.response!;
+    worker.response = (message) => {
+      if (message.operation === "cancel") return;
+      const result = response(message);
+      if (message.operation === "snapshotOpen") controller.abort();
+      return result;
+    };
+    await expect(
+      book.withOptions({ signal: controller.signal }).createSavePoint(),
+    ).rejects.toMatchObject({ code: "CANCELLED" });
+    const close = worker.sent.find(
+      (message) => message.operation === "snapshotClose",
+    );
+    expect(close.args.token).toBe(
+      worker.sent.find((message) => message.operation === "snapshotOpen").args
+        .token,
+    );
+    worker.response = response;
+    await book.setValues(id, "A1", [[8]]);
+    expect(
+      (await book.createSavePoint()).snapshot.sheets[0].cells[0][1].value,
+    ).toBe(8);
+    await book.dispose();
   });
   it("keeps the stored draft until explicit recovery and cancels bound drafts only after valid import", async () => {
     vi.useFakeTimers();
@@ -306,7 +456,12 @@ describe("SDK Worker boundary", () => {
   });
   it("isolates scoped request metadata under concurrent calls", async () => {
     const worker = new FakeWorker();
-    worker.response = (message) => message;
+    worker.response = (message) =>
+      message.operation === "snapshotOpen"
+        ? { snapshot: { sheets: [] }, revision: 0 }
+        : message.operation === "snapshotRead"
+          ? { cells: [], done: true }
+          : message;
     const book = new Workbook(worker.asWorker());
     await Promise.all([
       book.withOptions({ origin: "editor" }).setFormula("s", "A1", "=1"),
@@ -317,9 +472,11 @@ describe("SDK Worker boundary", () => {
     expect(worker.sent.map((item) => item.origin)).toEqual([
       "editor",
       "autosave",
+      "autosave",
+      "autosave",
     ]);
     expect(worker.sent[1].operationId).toBe("host-1");
-    expect(new Set(worker.sent.map((item) => item.id)).size).toBe(2);
+    expect(new Set(worker.sent.map((item) => item.id)).size).toBe(4);
     await book.dispose();
   });
   it.each(["malformed", "messageerror", "error"])(

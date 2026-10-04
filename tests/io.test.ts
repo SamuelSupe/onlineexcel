@@ -5,7 +5,7 @@ import { formatValue } from "../src/core/format";
 import { readXlsx, writeXlsx } from "../src/io/xlsx";
 import { WorkbookModel } from "../src/core/model";
 import { parseRange, keyOf } from "../src/core/address";
-import { parseCsv, writeCsv } from "../src/io/csv";
+import { CsvSizeError, parseCsv, writeCsv, writeCsvRow } from "../src/io/csv";
 import { zipSync, strToU8, unzipSync } from "fflate";
 it("roundtrips value-list filters, blank selection and other column conditions", async () => {
   const model = new WorkbookModel();
@@ -71,6 +71,12 @@ it("handles multiline CSV fields, quotes and formula-looking text as data", () =
   const rows = [["a,b", "line\nbreak", '"quoted"', "=SUM(A1:A2)"]];
   expect(parseCsv(writeCsv(rows))).toEqual(rows);
   expect(() => parseCsv('"unclosed')).toThrow();
+  expect(writeCsvRow(['a"b', "c"], ",", 8)).toBe('"a""b",c');
+  expect(() => writeCsvRow(['a"b', "c"], ",", 7)).toThrow(CsvSizeError);
+  expect(() => writeCsvRow(['"'.repeat(1000)], ",", 1002)).toThrow(
+    CsvSizeError,
+  );
+  expect(() => writeCsvRow([null], ",", 1)).toThrow(CsvSizeError);
 });
 it("preserves single-column blank records through CSV and clipboard TSV roundtrips", () => {
   for (const delimiter of [",", "\t"])
@@ -376,6 +382,9 @@ it("parses office input without destroying identifiers and renders conditional n
   expect(formatValue(-12, { numberFormat: '0;[Red](0);"zero"' })).toBe("(12)");
   expect(formatValue(0, { numberFormat: '0;[Red](0);"zero"' })).toBe("zero");
   expect(formatValue(5, { numberFormat: "[>=10]0.00;[Red]0.0" })).toBe("5.0");
+  expect(formatValue(1234.5, { numberFormat: "#,##0.00" })).toBe("1,234.50");
+  expect(formatValue(1234.5, { numberFormat: "0.0" })).toBe("1234.5");
+  expect(formatValue(0.25, { numberFormat: "0.00%" })).toBe("25.00%");
   expect(formatColor(-12, "0;[Red](0)")).toBe("#ff0000");
   expect(formatValue(1.25, { numberFormat: "# ?/?" })).toBe("1 1/4");
   expect(formatValue(2.5, { numberFormat: "[h]:mm:ss" })).toBe("60:00:00");

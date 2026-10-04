@@ -56,6 +56,18 @@ for (let i = 0; i < 50; i++) {
   edits.push(performance.now() - start);
 }
 edits.sort((a, b) => a - b);
+const undoTimes: number[] = [],
+  redoTimes: number[] = [];
+for (let i = 0; i < 5; i++) {
+  const started = performance.now();
+  model.undo();
+  undoTimes.push(performance.now() - started);
+}
+for (let i = 0; i < 5; i++) {
+  const started = performance.now();
+  model.redo();
+  redoTimes.push(performance.now() - started);
+}
 console.log(
   JSON.stringify({
     stage: "load-edit",
@@ -97,6 +109,20 @@ const importedModel = new WorkbookModel({
 const importCalculateMs = performance.now() - start;
 if (importedModel.sheets[0].cells.size !== cells.length)
   throw new Error("Imported cell count differs");
+for (let r = 0; r < rowCount; r += Math.max(1, Math.floor(rowCount / 100))) {
+  const key = keyOf(r, 9);
+  const expected = model.engine.get("bench", key);
+  const actual = importedModel.engine.get(importedModel.sheets[0].meta.id, key);
+  if (JSON.stringify(actual) !== JSON.stringify(expected))
+    throw new Error("Imported value differs");
+  if (model.sheets[0].cells.get(key)?.formula) {
+    let sum = 0;
+    for (let c = 1; c < 9; c++)
+      sum += Number(model.engine.get("bench", keyOf(r, c)));
+    if (expected !== sum)
+      throw new Error("Sorted formula differs from row values");
+  }
+}
 const result = {
   timestamp: new Date().toISOString(),
   environment: {
@@ -111,6 +137,8 @@ const result = {
   loadMs,
   editP50Ms: edits[Math.floor(edits.length * 0.5)],
   editP95Ms: edits[Math.floor(edits.length * 0.95)],
+  undoP95Ms: Math.max(...undoTimes),
+  redoP95Ms: Math.max(...redoTimes),
   dependencyRebuildMs,
   fullRecalculateMs,
   sortMs,

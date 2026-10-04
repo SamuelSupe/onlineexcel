@@ -37,6 +37,7 @@ const workbook = await createWorkbook({
 | LOSSY_EXPORT                       | 导出需要先确认兼容报告，再显式传 allowLossy                     |
 | MODULE_FAILED                      | 模块加载、注册或返回契约不合法                                  |
 | REVISION_CONFLICT                  | 一致性分块读取期间工作簿发生变化                                |
+| RESOURCE_LIMIT                    | 导出超过资源边界；CSV 可缩小 range 或改用 XLSX，工作簿内容保持不变 |
 | PROTOCOL_MISMATCH                  | Worker 协议、版本或消息格式不匹配                               |
 | SERIALIZATION_FAILED               | 消息无法复制或反序列化                                          |
 | WORKER_FAILED / TIMEOUT / DISPOSED | Worker 故障、超时或实例已释放                                   |
@@ -71,7 +72,7 @@ const stillDirty =
   latestRevision > savePoint.revision || editor.getEditState().dirty;
 ```
 
-`createSavePoint()` 在同一个 Worker 队列步骤取得 `{snapshot, revision}`，不会发生先取版本再取快照的竞争。版本仅在一个 Workbook 实例内递增，新实例从 0 开始。宿主仍须串行化持久化请求或使用条件写入，避免较早的网络保存覆盖较新的保存；库不决定保存位置。exportJSON 仍只返回原有版本化快照格式。
+`createSavePoint({ signal? })` 在 Worker 队列中固定快照版本，再分块读取并传输原始单元格；分块之间允许后续编辑、撤销和导入，返回的 `{snapshot, revision}` 始终对应开始捕获的同一个状态，并保留原始单元格顺序，避免重叠溢出公式在恢复后改变结果。取消时释放捕获资源。版本仅在一个 Workbook 实例内递增，新实例从 0 开始。宿主仍须串行化持久化请求或使用条件写入，避免较早的网络保存覆盖较新的保存；库不决定保存位置。exportJSON 仍只返回原有版本化快照格式。
 
 ## 可选自动保存与草稿恢复
 
@@ -113,7 +114,7 @@ await workbook.dispose();
 
 自定义存储实现 `PersistenceStorage`：`load(key, signal)` 返回 `SavedWorkbook | undefined`，`save(key, record, signal)` 持久化 `{version:1, savedAt, snapshot}`。save 必须在实际写入完成后 resolve，同键重复调用必须安全地替换同一记录，并响应取消。可使用宿主 API 或自己的本地存储；库不上传数据。网络条件写入所需的 ETag/令牌由宿主适配器维护，不能把实例内 revision 用作全局版本。
 
-内置 IndexedDB 适用于同源本地草稿，每个文档键应只有一个写入控制器。多个标签页/实例同时写同键、跨设备同步及冲突合并不在契约内。浏览器存储配额和清理策略仍适用；大工作簿保存会复制完整快照，宿主应按规模配置间隔与存储方案。
+内置 IndexedDB 适用于同源本地草稿，每个文档键应只有一个写入控制器。多个标签页/实例同时写同键、跨设备同步及冲突合并不在契约内。浏览器存储配额和清理策略仍适用。内置适配器按块编码完整快照，以 Blob 写入单个原子事务，减少主线程连续序列化的阻塞；取消或失败不会覆盖上一个成功保存的记录。适配器仍可读取原有未编码草稿，新编码属于存储内部格式，宿主应通过 load/save 访问。完整快照仍占用与数据规模成比例的内存；自定义存储的序列化和网络行为由宿主负责。
 
 ## 诊断与编辑效率
 
@@ -280,3 +281,5 @@ const workbookOptions = { workerUrl: "/onlineexcel/worker.js" };
 两者都支持传入现有 `workbook`。传入时宿主拥有它，卸载组件仅销毁编辑器；未传入时适配器异步创建并拥有 Workbook，卸载同时终止 Worker，初始化中卸载也会清理迟到的实例。更换 workbook 会更换视图；workbookOptions 是创建参数，更换它需要通过组件 key 重新挂载。options 的变化调用 setOptions，不重建 Workbook。React StrictMode 的试挂载允许出现短暂的初始化，但不会留下孤儿实例。SSR 可以导入和渲染空容器，Worker 仅在客户端挂载后创建。
 
 同步卸载默认丢弃草稿；需要保存时在路由守卫中先 await editor.commitEdit() 并保存，再允许卸载。onReady 提供的 editor 是稳定句柄，支持后续调用 setOptions。React 需要宿主安装 react，Vue 需要宿主安装 vue；其他入口不会加载框架。
+
+验证未发布候选包时，可运行 `node scripts/package-smoke.mjs <tarball路径>` 和 `node scripts/build-sdk-example.mjs <tarball路径>`；省略路径使用 artifacts 中当前版本的归档。后者构建实际安装该归档的原生 JS、React 和 Vue 宿主页，避免验证时覆盖已发布文件。

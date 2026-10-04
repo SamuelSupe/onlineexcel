@@ -34,6 +34,7 @@ import { FormulaEngine } from "../formula/engine";
 
 import { compare, isError } from "../formula/values";
 import { executeCommand, validName } from "./commands";
+import { SnapshotReader } from "./snapshot";
 export interface SheetState {
   meta: SheetMeta;
   cells: Map<number, Cell>;
@@ -67,6 +68,8 @@ export class WorkbookModel {
   private future: HistoryEntry[] = [];
   private active?: HistoryEntry;
   private historyLimit: number;
+  private filterUpdates?: Map<string, Set<number>>;
+  private snapshotReaders = new Set<SnapshotReader>();
   constructor(options: WorkbookOptions = {}) {
     if (
       options.historyLimit !== undefined &&
@@ -98,6 +101,20 @@ export class WorkbookModel {
         !this.sheet(id).meta.merges.some((m) => intersects(m, range)),
       named: (name) => this.names[name.toUpperCase()],
       formulas: () => this.formulas(),
+      cells: (id, range) => this.cellsInRange(this.sheet(id), range),
+      onInvalidate: (id, key) => {
+        const updates = this.filterUpdates?.get(id);
+        if (!updates) return;
+        const filter = this.sheet(id).meta.filter!,
+          row = rowOf(key),
+          column = columnOf(key);
+        if (
+          row > filter.range.r1 &&
+          row <= filter.range.r2 &&
+          filter.rules.some((rule) => rule.column === column)
+        )
+          updates.add(row);
+      },
     });
     const model = this;
     if (options.snapshot) this.load(options.snapshot);
@@ -150,6 +167,20 @@ export class WorkbookModel {
     if (!s) throw new Error(`Sheet not found: ${id}`);
     return s;
   }
+  *cellsInRange(sheet: SheetState, range: Rect): Generator<[number, Cell]> {
+    const area = (range.r2 - range.r1 + 1) * (range.c2 - range.c1 + 1);
+    if (area < sheet.cells.size) {
+      for (let r = range.r1; r <= range.r2; r++)
+        for (let c = range.c1; c <= range.c2; c++) {
+          const key = keyOf(r, c),
+            cell = sheet.cells.get(key);
+          if (cell) yield [key, cell];
+        }
+    } else {
+      for (const [key, cell] of sheet.cells)
+        if (contains(range, rowOf(key), columnOf(key))) yield [key, cell];
+    }
+  }
   *formulas(): Generator<{ sheetId: string; key: number; formula: string }> {
     for (const s of this.sheets)
       for (const [key, cell] of s.cells)
@@ -183,6 +214,25 @@ export class WorkbookModel {
   }
   setCell(sheet: SheetState, key: number, cell?: Cell): void {
     if (!this.active) throw new Error("Mutation outside a transaction");
+    if (
+      cell &&
+      !cell.formula &&
+      (cell.value === null || cell.value === undefined) &&
+      !cell.style
+    )
+      cell = undefined;
+    const previous = sheet.cells.get(key);
+    if (
+      previous === cell ||
+      (previous &&
+        cell &&
+        previous.value === cell.value &&
+        previous.formula === cell.formula &&
+        previous.style === cell.style)
+    )
+      return;
+    for (const reader of this.snapshotReaders)
+      reader.beforeWrite(sheet.cells, key);
     let patches = this.active.cells.get(sheet.meta.id);
     if (!patches) {
       patches = new Map();
@@ -214,14 +264,11 @@ export class WorkbookModel {
   ensureWritable(sheet: SheetState, range: Rect): void {
     this.validateArea(sheet, range);
     checkProtection(this, sheet, range);
-    for (let r = range.r1; r <= range.r2; r++)
-      for (let c = range.c1; c <= range.c2; c++) {
-        const owner = this.engine.spillOwner(sheet.meta.id, keyOf(r, c));
-        if (owner && !contains(range, owner.row, owner.column))
-          throw new Error(
-            "Cannot edit part of a spilled array; edit its anchor cell",
-          );
-      }
+    for (const spill of this.engine.spillIntersections(sheet.meta.id, range))
+      if (!contains(range, spill.r1, spill.c1))
+        throw new Error(
+          "Cannot edit part of a spilled array; edit its anchor cell",
+        );
   }
   styleId(style: CellStyle): number {
     const color = (value: string): string => {
@@ -281,24 +328,43 @@ export class WorkbookModel {
       for (const key of patches.keys()) changed.push({ sheetId, key });
     return changed;
   }
-  private calculate(entry: HistoryEntry): void {
+  private recalculate(
+    entry: HistoryEntry,
+  ): Map<string, Set<number>> | undefined {
     // Bulk edits invalidate enough dependencies that rebuilding is cheaper than indexing each cell.
     const changedCount = [...entry.cells.values()].reduce(
       (n, patches) => n + patches.size,
       0,
     );
-    if (entry.rebuild || changedCount > 5000) this.engine.rebuild();
-    else {
-      const changed = this.changedCells(entry);
-      this.engine.invalidate(changed);
-      for (const { sheetId, key } of changed)
-        this.engine.updateFormula(
-          sheetId,
-          key,
-          this.sheet(sheetId).cells.get(key)?.formula,
+    const rebuild = entry.rebuild || changedCount > 5000;
+    const updates = rebuild
+      ? undefined
+      : new Map(
+          this.sheets
+            .filter((sheet) => !!sheet.meta.filter)
+            .map((sheet) => [sheet.meta.id, new Set<number>()]),
         );
+    this.filterUpdates = updates;
+    try {
+      if (rebuild) this.engine.rebuild();
+      else {
+        const changed = this.changedCells(entry);
+        this.engine.invalidate(changed);
+        for (const { sheetId, key } of changed)
+          this.engine.updateFormula(
+            sheetId,
+            key,
+            this.sheet(sheetId).cells.get(key)?.formula,
+          );
+      }
+      this.engine.recalculate();
+    } finally {
+      this.filterUpdates = undefined;
     }
-    this.engine.recalculate();
+    return updates;
+  }
+  private calculate(entry: HistoryEntry): void {
+    const filterUpdates = this.recalculate(entry);
     for (const [id, patches] of entry.cells) {
       const sheet = this.sheets.find((s) => s.meta.id === id);
       if (!sheet?.meta.validations?.length) continue;
@@ -316,7 +382,7 @@ export class WorkbookModel {
         );
       }
     }
-    this.refreshFilters();
+    this.refreshFilters(filterUpdates, entry.metadata);
   }
   private commit(entry: HistoryEntry, calculated = false): ChangeEvent {
     entry.afterSheets = [...this.sheets];
@@ -356,9 +422,26 @@ export class WorkbookModel {
   ): Promise<ChangeEvent> {
     const entry = this.begin();
     try {
+      let lastCheckpoint = performance.now();
+      let pendingCommands = 0;
+      const yieldIfNeeded = async (progress: number, force = false) => {
+        if (
+          force ||
+          ++pendingCommands >= 256 ||
+          performance.now() - lastCheckpoint >= 8
+        ) {
+          await checkpoint(progress);
+          pendingCommands = 0;
+          lastCheckpoint = performance.now();
+        }
+      };
       for (let index = 0; index < commands.length; index++) {
         const command = commands[index];
-        if (command.type === "setValues" && command.values.length > 2000) {
+        if (
+          command.type === "setValues" &&
+          command.values.length * (command.range.c2 - command.range.c1 + 1) >
+            20000
+        ) {
           const rows = command.range.r2 - command.range.r1 + 1,
             cols = command.range.c2 - command.range.c1 + 1;
           if (
@@ -368,8 +451,12 @@ export class WorkbookModel {
             throw new Error("Values must match range dimensions");
           // Spill ownership is checked against the whole public write, not each checkpoint chunk.
           this.ensureWritable(this.sheet(command.sheetId), command.range);
-          for (let offset = 0; offset < rows; offset += 2000) {
-            const values = command.values.slice(offset, offset + 2000);
+          const chunkRows = Math.max(
+            1,
+            Math.min(2000, Math.floor(20000 / cols)),
+          );
+          for (let offset = 0; offset < rows; offset += chunkRows) {
+            const values = command.values.slice(offset, offset + chunkRows);
             this.command(
               {
                 ...command,
@@ -382,15 +469,18 @@ export class WorkbookModel {
               },
               true,
             );
-            await checkpoint(
-              (index + Math.min(rows, offset + 2000) / rows) / commands.length,
+            await yieldIfNeeded(
+              (index + Math.min(rows, offset + chunkRows) / rows) /
+                commands.length,
+              true,
             );
           }
         } else {
           this.command(command);
-          await checkpoint((index + 1) / commands.length);
+          await yieldIfNeeded((index + 1) / commands.length);
         }
       }
+      await yieldIfNeeded(1, true);
       this.calculate(entry);
       validate?.();
       await checkpoint(1);
@@ -446,13 +536,14 @@ export class WorkbookModel {
       if (!s) continue;
       for (const [key, patch] of patches) {
         const cell = forward ? patch.after : patch.before;
+        for (const reader of this.snapshotReaders)
+          reader.beforeWrite(s.cells, key);
         if (cell) s.cells.set(key, cell);
         else s.cells.delete(key);
       }
     }
-    this.engine.rebuild();
-    this.engine.recalculate();
-    this.refreshFilters();
+    const filterUpdates = this.recalculate(entry);
+    this.refreshFilters(filterUpdates, entry.metadata);
   }
   undo(): ChangeEvent | null {
     const entry = this.history.pop();
@@ -482,13 +573,20 @@ export class WorkbookModel {
     }
     executeCommand(this, command, writableChecked);
   }
-  refreshFilters(): void {
+  refreshFilters(
+    updates?: Map<string, Set<number>>,
+    metadata?: ReadonlyMap<string, unknown>,
+  ): void {
     for (const sheet of this.sheets) {
       const filter = sheet.meta.filter;
       if (!filter) {
         delete sheet.meta.filteredRows;
         continue;
       }
+      const changedRows = !metadata?.has(sheet.meta.id)
+        ? updates?.get(sheet.meta.id)
+        : undefined;
+      if (changedRows && !changedRows.size) continue;
       const lists = new Map(
         filter.rules
           .filter((rule) => rule.operator === "in")
@@ -497,36 +595,42 @@ export class WorkbookModel {
             new Set(rule.values.map((value) => value.toLowerCase())),
           ]),
       );
-      const hidden: number[] = [];
-      for (let r = filter.range.r1 + 1; r <= filter.range.r2; r++)
-        if (
-          !filter.rules.every((rule) => {
-            const value = this.engine.get(sheet.meta.id, keyOf(r, rule.column));
-            if (rule.operator === "in")
-              return lists
-                .get(rule.column)!
-                .has(filterText(value).toLowerCase());
-            if (isError(value)) return false;
-            if (rule.operator === "contains")
-              return String(value ?? "")
-                .toLowerCase()
-                .includes(String(rule.value ?? "").toLowerCase());
-            const order = compare(value, rule.value);
-            return rule.operator === "eq"
-              ? order === 0
-              : rule.operator === "neq"
-                ? order !== 0
-                : rule.operator === "gt"
-                  ? order > 0
-                  : rule.operator === "lt"
-                    ? order < 0
-                    : rule.operator === "gte"
-                      ? order >= 0
-                      : order <= 0;
-          })
-        )
-          hidden.push(r);
-      sheet.meta.filteredRows = hidden;
+      const matches = (r: number) =>
+        filter.rules.every((rule) => {
+          const value = this.engine.get(sheet.meta.id, keyOf(r, rule.column));
+          if (rule.operator === "in")
+            return lists.get(rule.column)!.has(filterText(value).toLowerCase());
+          if (isError(value)) return false;
+          if (rule.operator === "contains")
+            return String(value ?? "")
+              .toLowerCase()
+              .includes(String(rule.value ?? "").toLowerCase());
+          const order = compare(value, rule.value);
+          return rule.operator === "eq"
+            ? order === 0
+            : rule.operator === "neq"
+              ? order !== 0
+              : rule.operator === "gt"
+                ? order > 0
+                : rule.operator === "lt"
+                  ? order < 0
+                  : rule.operator === "gte"
+                    ? order >= 0
+                    : order <= 0;
+        });
+      if (changedRows) {
+        const hidden = new Set(sheet.meta.filteredRows ?? []);
+        for (const r of changedRows) {
+          if (matches(r)) hidden.delete(r);
+          else hidden.add(r);
+        }
+        sheet.meta.filteredRows = [...hidden].sort((a, b) => a - b);
+      } else {
+        const hidden: number[] = [];
+        for (let r = filter.range.r1 + 1; r <= filter.range.r2; r++)
+          if (!matches(r)) hidden.push(r);
+        sheet.meta.filteredRows = hidden;
+      }
     }
   }
   region(sheetId: string, range: Rect): Region {
@@ -580,6 +684,15 @@ export class WorkbookModel {
       if (results.length >= 1000) break;
     }
     return results;
+  }
+  openSnapshot(): SnapshotReader & { dispose(): void } {
+    const reader = new SnapshotReader(this);
+    this.snapshotReaders.add(reader);
+    return Object.assign(reader, {
+      dispose: () => {
+        this.snapshotReaders.delete(reader);
+      },
+    });
   }
   snapshot(): WorkbookSnapshot {
     return {

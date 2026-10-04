@@ -34,7 +34,7 @@
 | ISOWEEKNUM | value |  |
 | MINUTE | value |  |
 | MONTH | value |  |
-| NETWORKDAYS | start_date, end_date, [holidays] |  |
+| NETWORKDAYS | start_date, end_date, [holidays] | Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!. |
 | NOW |  |  |
 | SECOND | value |  |
 | TIME | hour, minute, second |  |
@@ -42,7 +42,7 @@
 | TODAY |  |  |
 | WEEKDAY | serial_number, [return_type] |  |
 | WEEKNUM | serial_number, [return_type] |  |
-| WORKDAY | start_date, days, [holidays] |  |
+| WORKDAY | start_date, days, [holidays] | Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!. |
 | YEAR | value |  |
 
 ## financial
@@ -211,7 +211,7 @@
 | CHAR | value | Uses Unicode code points 1–255; platform-specific legacy code pages are not emulated. |
 | CLEAN | value |  |
 | CODE | value |  |
-| CONCAT | text1, ... |  |
+| CONCAT | text1, ... | Result is limited to 32,767 characters. |
 | EXACT | text1, text2 |  |
 | FIND | find_text, within_text, [start_num] |  |
 | FIXED | number, [decimals], [no_commas] |  |
@@ -227,7 +227,7 @@
 | SEARCH | find_text, within_text, [start_num] |  |
 | SUBSTITUTE | text, old_text, new_text, [instance_num] |  |
 | TEXT | value, format_text |  |
-| TEXTJOIN | delimiter, ignore_empty, text1, ... |  |
+| TEXTJOIN | delimiter, ignore_empty, text1, ... | Result is limited to 32,767 characters. |
 | TRIM | value |  |
 | UNICHAR | value |  |
 | UNICODE | value |  |

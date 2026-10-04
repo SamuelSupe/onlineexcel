@@ -600,14 +600,33 @@ export class Workbook {
   async getFunctions(): Promise<ReturnType<typeof listFunctions>> {
     return this.request("functions");
   }
-  /** Snapshot and revision captured together in the Worker queue. Persist both as one save point. */
+  /** A point-in-time snapshot, transferred in chunks so concurrent edits can proceed. */
   async createSavePoint(
     options?: OperationOptions,
   ): Promise<{ snapshot: WorkbookSnapshot; revision: number }> {
-    return this.request("savePoint", {}, options);
+    const token = crypto.randomUUID();
+    try {
+      const point = await this.request<{
+        snapshot: WorkbookSnapshot;
+        revision: number;
+      }>("snapshotOpen", { token }, options);
+      for (;;) {
+        const chunk = await this.request<{
+          sheetIndex: number;
+          cells: WorkbookSnapshot["sheets"][number]["cells"];
+          done: boolean;
+        }>("snapshotRead", { token }, options);
+        point.snapshot.sheets[chunk.sheetIndex]?.cells.push(...chunk.cells);
+        if (chunk.done) return point;
+      }
+    } finally {
+      // Release the captured revision even when the caller cancels between chunks.
+      if (!this.disposed)
+        await this.request("snapshotClose", { token }, { signal: undefined });
+    }
   }
   async exportJSON(): Promise<WorkbookSnapshot> {
-    return this.request("snapshot");
+    return (await this.createSavePoint()).snapshot;
   }
   async importJSON(
     snapshot: WorkbookSnapshot,

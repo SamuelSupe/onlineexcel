@@ -125,13 +125,12 @@ export function executeCommand(
       if (sheet.meta.protected && command.formats)
         throw new Error("Unprotect the sheet before changing formats");
       model.ensureWritable(sheet, command.range);
-      for (const [key, cell] of sheet.cells)
-        if (contains(command.range, rowOf(key), columnOf(key)))
-          model.setCell(
-            sheet,
-            key,
-            command.formats ? undefined : { style: cell.style },
-          );
+      for (const [key, cell] of model.cellsInRange(sheet, command.range))
+        model.setCell(
+          sheet,
+          key,
+          command.formats ? undefined : { style: cell.style },
+        );
       break;
     }
     case "style": {

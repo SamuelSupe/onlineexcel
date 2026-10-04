@@ -1,0 +1,404 @@
+{
+  "date": "2026-10-03",
+  "status": "validated",
+  "nativeCore": {
+    "baseline": {
+      "source": "original onlineexcel@0.1.1 tarball; same updated benchmark script",
+      "timestamp": "2026-10-03T12:37:58.144Z",
+      "environment": {
+        "node": "v24.15.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "rows": 100000,
+      "columns": 100,
+      "populatedCells": 1000000,
+      "formulaCells": 50000,
+      "loadMs": 1108.077417,
+      "editP50Ms": 0.06591699999989942,
+      "editP95Ms": 0.16512499999998909,
+      "undoP95Ms": 670,
+      "redoP95Ms": 703.8680409999997,
+      "dependencyRebuildMs": 289.9409579999992,
+      "fullRecalculateMs": 357.8382079999992,
+      "sortMs": 2234.798290999999,
+      "exportMs": 2199.9967910000014,
+      "importMs": 1948.3591250000009,
+      "importCalculateMs": 1041.816917,
+      "xlsxBytes": 4285289,
+      "importedCells": 1000000,
+      "peakRssMiB": 1297.953125,
+      "memory": {
+        "rss": 1361002496,
+        "heapTotal": 1036091392,
+        "heapUsed": 932112024,
+        "external": 58471766,
+        "arrayBuffers": 55988221
+      }
+    },
+    "current": {
+      "source": "working tree, unpublished performance repairs",
+      "timestamp": "2026-10-03T13:05:18.573Z",
+      "environment": {
+        "node": "v24.15.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "rows": 100000,
+      "columns": 100,
+      "populatedCells": 1000000,
+      "formulaCells": 50000,
+      "loadMs": 1170.92175,
+      "editP50Ms": 0.0814580000001115,
+      "editP95Ms": 0.3730830000001788,
+      "undoP95Ms": 0.16270799999983865,
+      "redoP95Ms": 0.08362499999998363,
+      "dependencyRebuildMs": 329.80491700000016,
+      "fullRecalculateMs": 422.4780410000001,
+      "sortMs": 2649.7803750000003,
+      "exportMs": 2308.297708,
+      "importMs": 2250.983292000001,
+      "importCalculateMs": 1177.0645830000012,
+      "xlsxBytes": 4285289,
+      "importedCells": 1000000,
+      "peakRssMiB": 1240.84375,
+      "memory": {
+        "rss": 1301135360,
+        "heapTotal": 1046020096,
+        "heapUsed": 930403120,
+        "external": 58471766,
+        "arrayBuffers": 55988189
+      }
+    },
+    "final": {
+      "timestamp": "2026-10-03T14:07:09.085Z",
+      "environment": {
+        "node": "v24.15.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "rows": 100000,
+      "columns": 100,
+      "populatedCells": 1000000,
+      "formulaCells": 50000,
+      "loadMs": 1153.471125,
+      "editP50Ms": 0.078708000000006,
+      "editP95Ms": 0.6844590000000608,
+      "undoP95Ms": 0.16295800000011695,
+      "redoP95Ms": 0.09537500000010368,
+      "dependencyRebuildMs": 395.4438329999998,
+      "fullRecalculateMs": 402.885166,
+      "sortMs": 2496.553292,
+      "exportMs": 2246.357416,
+      "importMs": 2374.7420409999995,
+      "importCalculateMs": 1166.5491249999995,
+      "xlsxBytes": 4285289,
+      "importedCells": 1000000,
+      "peakRssMiB": 1361.28125,
+      "memory": {
+        "rss": 1427423232,
+        "heapTotal": 1158955008,
+        "heapUsed": 1066077152,
+        "external": 58471766,
+        "arrayBuffers": 55988189
+      }
+    }
+  },
+  "longChain": {
+    "environment": "Native Node 24.15.0, darwin arm64",
+    "formulaCells": 50000,
+    "loadMs": 805.609709,
+    "editMs": 427.4315,
+    "first": 50007,
+    "last": 7,
+    "peakRssMiB": 418.140625
+  },
+  "browserRuns": [
+    {
+      "phase": "before editor refresh optimization",
+      "loadMs": 8508.699999988079,
+      "editP50Ms": 47.60000002384186,
+      "editP95Ms": 159.69999998807907,
+      "scrollFps": 39.666798889225426,
+      "frameP95Ms": 108.30000001192093,
+      "windowErrors": []
+    },
+    {
+      "phase": "after editor refresh optimization",
+      "loadMs": 4137.5,
+      "editP50Ms": 30,
+      "editP95Ms": 279.30000001192093,
+      "scrollFps": 83.07564499053414,
+      "frameP95Ms": 27.5,
+      "windowErrors": []
+    },
+    {
+      "phase": "final build with request/feedback samples",
+      "loadMs": 2932.099999964237,
+      "editP50Ms": 15.800000011920929,
+      "editP95Ms": 17,
+      "scrollFps": 119.24478304074196,
+      "frameP95Ms": 11.600000023841858,
+      "requestP95Ms": 2.199999988079071,
+      "requestMaxMs": 3,
+      "editSamples": 30,
+      "scrollFrames": 180,
+      "allEditSamplesVisible": true,
+      "windowErrors": [],
+      "gate": "PASS"
+    },
+    {
+      "phase": "extended workload before Intl formatter reuse",
+      "loadMs": 4180.899999976158,
+      "editP95Ms": 63,
+      "scrollFps": 75.86933614330874,
+      "formattedScrollFps": 33.38464677196394,
+      "filteredEditP95Ms": 201.19999998807907,
+      "filteredRows": 50000,
+      "gate": "TARGET NOT MET"
+    },
+    {
+      "phase": "Intl formatter reused, full filter scan still enabled",
+      "loadMs": 2777.100000023842,
+      "editP95Ms": 24.600000023841858,
+      "scrollFps": 116.15151319699595,
+      "formattedScrollFps": 117.79333813048335,
+      "filteredEditP95Ms": 361.5,
+      "filteredRows": 50000,
+      "gate": "TARGET NOT MET"
+    },
+    {
+      "phase": "Intl reuse and incremental filters",
+      "loadMs": 2371.800000011921,
+      "editP50Ms": 15.5,
+      "editP95Ms": 18.69999998807907,
+      "scrollFps": 118.04052724953394,
+      "frameP95Ms": 10.5,
+      "formattedScrollFps": 109.70258410850258,
+      "filteredEditP95Ms": 36.30000001192093,
+      "filteredRows": 50000,
+      "windowErrors": [],
+      "gate": "PASS"
+    },
+    {
+      "phase": "after-streamed-snapshot",
+      "loadMs": 1441.3999999761581,
+      "editP95Ms": 17.30000001192093,
+      "scrollFps": 119.87213639070788,
+      "formattedScrollFps": 120.68387529332885,
+      "filteredEditP95Ms": 26.19999998807907,
+      "frameP95Ms": 9.899999976158142,
+      "windowErrors": [],
+      "gate": "passed"
+    },
+    {
+      "phase": "ordered-key-buffer-under-host-pressure",
+      "loadMs": 2849.100000023842,
+      "editP95Ms": 165.19999998807907,
+      "scrollFps": 97.7410947021587,
+      "formattedScrollFps": 58.19968960255275,
+      "filteredEditP95Ms": 354.39999997615814,
+      "windowErrors": [],
+      "gate": "failed"
+    },
+    {
+      "phase": "final-ordered-snapshot-after-own-containers-finished",
+      "loadMs": 1599.199999988079,
+      "editP95Ms": 16.700000047683716,
+      "scrollFps": 119.96800852819888,
+      "formattedScrollFps": 120.32889899249206,
+      "filteredEditP95Ms": 27.80000001192093,
+      "windowErrors": [],
+      "gate": "passed"
+    }
+  ],
+  "browserEnvironment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "viewport": {
+      "width": 1456,
+      "height": 481,
+      "dpr": 2
+    },
+    "hostLoadNote": "OrbStack Helper was using approximately 1370-1405% CPU. Unrelated workloads were left running."
+  },
+  "autosaveRuns": [
+    {
+      "phase": "before-chunked-snapshot",
+      "editP95Ms": 2449.800000011921,
+      "firstRequestMs": 2009,
+      "dataIntegrity": "passed",
+      "gate": "failed",
+      "feedbackMs": [
+        2449.8,
+        18.2,
+        15.7,
+        32.9,
+        33.8,
+        18.7,
+        48.4,
+        65.4,
+        25.7,
+        32.5,
+        20.7,
+        29.5,
+        18,
+        23.1,
+        18,
+        48.7,
+        18,
+        24.3,
+        34,
+        66.7
+      ]
+    },
+    {
+      "phase": "chunked-snapshot-with-eager-key-copy",
+      "editP95Ms": 232.0999999642372,
+      "firstRequestMs": 169.5,
+      "dataIntegrity": "passed",
+      "gate": "failed",
+      "feedbackMs": [
+        232.1,
+        58.7,
+        61.5,
+        48.6,
+        33.1,
+        47.4,
+        181.1,
+        54.5,
+        33.6,
+        65.9,
+        78.5,
+        48.7,
+        51.4,
+        39.4,
+        35.2,
+        39.8,
+        40,
+        35,
+        41.5,
+        42.4
+      ]
+    },
+    {
+      "phase": "iterator-snapshot-and-chunked-indexeddb",
+      "editP95Ms": 73.20000004768372,
+      "firstRequestMs": 2.799999952316284,
+      "dataIntegrity": "passed",
+      "cancellation": "passed; previous durable record retained",
+      "gate": "passed",
+      "feedbackMs": [
+        31.4,
+        43.9,
+        40.7,
+        33.5,
+        32.3,
+        42.6,
+        26.5,
+        34.9,
+        55.3,
+        35.7,
+        30.9,
+        24.9,
+        32.8,
+        50.6,
+        41.8,
+        32.3,
+        67.3,
+        54.3,
+        39.1,
+        73.2
+      ],
+      "limitation": "Superseded: later test found snapshot entry order could change competing spill results"
+    },
+    {
+      "phase": "ordered-key-buffer-under-host-pressure",
+      "editP95Ms": 556.0999999642372,
+      "firstRequestMs": 107.30000001192093,
+      "dataIntegrity": "passed including cancellation; overlap preservation covered in model tests",
+      "gate": "failed",
+      "feedbackMs": [
+        547.3,
+        165.4,
+        254.2,
+        34.4,
+        99.2,
+        23.7,
+        16.8,
+        47.6,
+        38.7,
+        24,
+        30.5,
+        38.9,
+        112.1,
+        110.1,
+        556.1,
+        138.1,
+        95.9,
+        67.5,
+        241.1,
+        217.2
+      ]
+    },
+    {
+      "phase": "final-ordered-snapshot-after-own-containers-finished",
+      "editP95Ms": 96.29999995231628,
+      "firstRequestMs": 27,
+      "dataIntegrity": "passed; 1000000 cells, raw formulas, latest edits, revision, cancel keeps previous record",
+      "gate": "passed",
+      "feedbackMs": [
+        96.3,
+        31.7,
+        29.6,
+        33.8,
+        25,
+        33.7,
+        28.7,
+        21.6,
+        24.5,
+        35.3,
+        31.6,
+        33,
+        33.6,
+        25.1,
+        24.5,
+        43.1,
+        33.5,
+        31.9,
+        24.9,
+        25.3
+      ]
+    }
+  ],
+  "sparseStructureProbe": {
+    "before": {
+      "sort": "terminated after 1500 ms",
+      "copy": "terminated after 1500 ms"
+    },
+    "after": "covered by maximum-dimension sparse operations subprocess in tests/model.test.ts"
+  },
+  "interop": {
+    "environment": "OrbStack Python 3.13 alpine; openpyxl 3.1.5; Pillow 12.3.0",
+    "result": "passed; independent generation and readback"
+  },
+  "validation": {
+    "native": "228 tests, typecheck, builds passed",
+    "browser": "Final ordered-snapshot implementation passed all five capacity gates and the full editor integration suite; actual M20 =SUM(2,3) produced 5 and undo restored empty; no console or window errors",
+    "sdk": "Final code installed from candidate tarball: ESM/IIFE parity, core/editor/XLSX, TypeScript consumer, native JS/React StrictMode/Vue and strict CSP browser integration all passed",
+    "orbstack": "228 tests, typecheck and builds passed on frozen source copied into guest disk, maxWorkers=1. Capacity timing stopped after a 53-second load under severe host pressure. Later snapshot-order regression passed its new scenario; two unchanged model tests exceeded 5 seconds during the focused rerun. The focused rerun also reported a Vitest RPC timeout; it is recorded as failed, not passed."
+  },
+  "sourceAndTestsSha256": "956672bfa3428f27ccc23f65123d027d2324cdeb18316ecb2b97e2290a4de5eb",
+  "environmentPressure": {
+    "orbStackHelperCpuPercent": 1437.7,
+    "orbStackHelperRssKiB": 30667456,
+    "hostFreePages": 7971,
+    "pageSize": 16384,
+    "compressedPages": 1387667,
+    "orbStackMillionCellLoadMs": 53186.941474
+  },
+  "unverified": [
+    "Desktop Excel open/recalculate/save",
+    "Other browsers and operating-system IME candidate UI",
+    "Browser whole-process peak memory"
+  ]
+}

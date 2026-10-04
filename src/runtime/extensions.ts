@@ -7,7 +7,7 @@ import type {
 } from "../core/types";
 import type { FunctionContext } from "../formula/registry";
 import { functions } from "../formula/functions";
-import { isArray, matrix } from "../formula/values";
+import { isArray, matrix, PendingCalculation } from "../formula/values";
 import { WorkbookError } from "./errors";
 export type FunctionValue = Scalar | Scalar[][];
 export interface CustomFunction {
@@ -114,7 +114,8 @@ export function registerFunctions(definitions: CustomFunction[]): void {
           return validScalar(output)
             ? cleanScalar(output)
             : { error: "#VALUE!" };
-        } catch {
+        } catch (error) {
+          if (error instanceof PendingCalculation) throw error;
           return { error: "#VALUE!" };
         }
       },

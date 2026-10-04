@@ -6,6 +6,8 @@
 
 [下载版本](https://github.com/SamuelSupe/onlineexcel/releases) · [接入指南](docs/sdk.md) · [API](docs/api.md) · [验证记录](docs/validation.md)
 
+GitHub `main` 已包含 2026-10-03 的性能与一致性修复，详见[验收记录](docs/validation.md#性能-p0p1-修复审计2026-10-03)。npm 和正式 GitHub Release 仍为 0.1.1，尚未包含这些修复；体验当前源码请按下方“本地运行”构建。
+
 ## 安装发布包
 
 在宿主应用中安装 [npm 包](https://www.npmjs.com/package/onlineexcel)：
@@ -31,7 +33,7 @@ npm run dev
 ```sh
 npm run check       # 类型检查、行为测试、库构建
 npm run functions   # 更新公式能力文档
-npm run bench       # 固定数据集的核心性能基准
+npm run bench       # 固定数据集的编辑、撤销/重做、重算、排序和 XLSX 基准
 npm pack            # 生成可安装的 npm 包
 ```
 

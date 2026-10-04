@@ -194,7 +194,10 @@ define(
     if (n < 0 || k < 0 || k > n) return error("#NUM!");
     k = Math.min(k, n - k);
     let out = 1;
-    for (let i = 1; i <= k; i++) out *= (n - i + 1) / i;
+    for (let i = 1; i <= k; i++) {
+      out *= (n - i + 1) / i;
+      if (!Number.isFinite(out)) return error("#NUM!");
+    }
     return finite(out);
   },
   true,
@@ -219,7 +222,7 @@ for (const name of [
     if (name === "COUNT") {
       let count = 0;
       for (const arg of a)
-        for (const value of flatten([arg]))
+        for (const value of flatten([arg], true))
           if (
             typeof value === "number" ||
             (!isArray(arg) &&
@@ -262,20 +265,17 @@ for (const name of [
       );
     return name === "AVEDEV" ? mean(deviations) : sum(deviations);
   });
-define(
-  "COUNTA",
-  1,
-  255,
-  "statistics",
-  (a) => [...flatten(a)].filter((v) => v !== null).length,
-);
-define(
-  "COUNTBLANK",
-  1,
-  1,
-  "statistics",
-  (a) => [...flatten(a)].filter((v) => v === null || v === "").length,
-);
+define("COUNTA", 1, 255, "statistics", (a) => {
+  let count = 0;
+  for (const v of flatten(a, true)) if (v !== null) count++;
+  return count;
+});
+define("COUNTBLANK", 1, 1, "statistics", (a) => {
+  const value = a[0];
+  let count = isArray(value) ? value.rows * value.columns : 1;
+  for (const v of flatten(a, true)) if (v !== null && v !== "") count--;
+  return count;
+});
 for (const name of ["VAR.S", "VAR.P", "STDEV.S", "STDEV.P"])
   define(name, 1, 255, "statistics", (a) => {
     const ns = numbers(a),
@@ -339,17 +339,31 @@ function conditional(args: Value[], name: string): Value {
     return error("#VALUE!");
   let total = 0,
     matches = 0;
-  for (let r = 0; r < target.rows; r++)
-    for (let c = 0; c < target.columns; c++)
-      if (pairs.every(([range, test]) => test(range.get(r, c)))) {
-        const v = target.get(r, c);
-        if (!count && isError(v)) return v;
-        if (count) matches++;
-        else if (typeof v === "number") {
-          matches++;
-          total += v;
-        }
+  const visit = (r: number, c: number) => {
+    if (pairs.every(([range, test]) => test(range.get(r, c)))) {
+      const v = target.get(r, c);
+      if (!count && isError(v)) throw v;
+      if (count) matches++;
+      else if (typeof v === "number") {
+        matches++;
+        total += v;
       }
+    }
+  };
+  if (!count && target.entries) {
+    for (const [r, c] of target.entries()) visit(r, c);
+  } else if (count && pairs.every(([range]) => !!range.entries)) {
+    const keys = new Set<number>();
+    for (const [range] of pairs)
+      for (const [r, c] of range.entries!()) keys.add(r * target.columns + c);
+    if (pairs.every(([, test]) => test(null)))
+      matches = target.rows * target.columns - keys.size;
+    for (const key of keys)
+      visit(Math.floor(key / target.columns), key % target.columns);
+  } else {
+    for (let r = 0; r < target.rows; r++)
+      for (let c = 0; c < target.columns; c++) visit(r, c);
+  }
   return count
     ? matches
     : average
@@ -379,13 +393,23 @@ define("SUMPRODUCT", 1, 255, "math", (a) => {
   if (arrays.some((x) => x.rows !== first.rows || x.columns !== first.columns))
     return error("#VALUE!");
   let total = 0;
-  for (let r = 0; r < first.rows; r++)
-    for (let c = 0; c < first.columns; c++)
-      total += arrays.reduce((p, v) => {
-        const x = v.get(r, c);
-        if (isError(x)) throw x;
-        return p * (typeof x === "number" ? x : 0);
-      }, 1);
+  const visit = (r: number, c: number) => {
+    total += arrays.reduce((p, v) => {
+      const x = v.get(r, c);
+      if (isError(x)) throw x;
+      return p * (typeof x === "number" ? x : 0);
+    }, 1);
+  };
+  if (arrays.every((v) => !!v.entries)) {
+    const keys = new Set<number>();
+    for (const value of arrays)
+      for (const [r, c] of value.entries!()) keys.add(r * first.columns + c);
+    for (const key of [...keys].sort((a, b) => a - b))
+      visit(Math.floor(key / first.columns), key % first.columns);
+  } else {
+    for (let r = 0; r < first.rows; r++)
+      for (let c = 0; c < first.columns; c++) visit(r, c);
+  }
   return total;
 });
 for (const name of [

@@ -35,12 +35,14 @@ export function executeStructural(
   const noComplexArea = (s: SheetState, range: Rect) => {
     if (s.meta.merges.some((m) => intersects(m, range)))
       throw new Error("Unmerge this range before sorting, moving or filling");
-    for (let r = range.r1; r <= range.r2; r++)
-      for (let c = range.c1; c <= range.c2; c++)
-        if (model.engine.spillOwner(s.meta.id, keyOf(r, c)))
-          throw new Error(
-            "Cannot move or sort spilled results; operate on the formula anchor",
-          );
+    for (const spill of model.engine.spillIntersections(s.meta.id, range))
+      if (
+        Math.min(range.r2, spill.r2) > spill.r1 ||
+        Math.min(range.c2, spill.c2) > spill.c1
+      )
+        throw new Error(
+          "Cannot move or sort spilled results; operate on the formula anchor",
+        );
   };
   if (command.type === "paste") {
     pasteCells(model, sheet, command);
@@ -252,20 +254,28 @@ export function executeStructural(
       }
       return a - b;
     });
-    const originals = new Map(sheet.cells);
+    const originals = new Map(model.cellsInRange(sheet, command.range));
+    const destinations = new Int32Array(rows.length);
     for (let i = 0; i < rows.length; i++)
-      for (let c = command.range.c1; c <= command.range.c2; c++) {
-        const from = rows[i],
-          to = start + i,
-          cell = originals.get(keyOf(from, c));
-        model.setCell(
-          sheet,
-          keyOf(to, c),
-          cell?.formula
-            ? { ...cell, formula: shiftFormula(cell.formula, to - from, 0) }
-            : cell,
-        );
-      }
+      destinations[rows[i] - start] = start + i;
+    for (const [key] of originals) {
+      const to = rowOf(key);
+      if (to >= start && !originals.has(keyOf(rows[to - start], columnOf(key))))
+        model.setCell(sheet, key, undefined);
+    }
+    for (const [key, cell] of originals) {
+      const from = rowOf(key),
+        c = columnOf(key);
+      if (from < start) continue;
+      const to = destinations[from - start];
+      model.setCell(
+        sheet,
+        keyOf(to, c),
+        cell?.formula
+          ? { ...cell, formula: shiftFormula(cell.formula, to - from, 0) }
+          : cell,
+      );
+    }
     return;
   }
   const source = command.type === "fill" ? command.source : command.range;
@@ -295,17 +305,15 @@ export function executeStructural(
   const originals = new Map<number, Cell>();
   const targetStyles = new Map<number, number | undefined>();
   if (command.type === "copy" && command.valuesOnly)
-    for (const [key, cell] of targetSheet.cells)
-      if (contains(target, rowOf(key), columnOf(key)))
-        targetStyles.set(key, cell.style);
-  for (const [key, cell] of sheet.cells)
-    if (contains(source, rowOf(key), columnOf(key)))
-      originals.set(
-        key,
-        command.type === "copy" && command.valuesOnly
-          ? { value: model.engine.get(sheet.meta.id, key) }
-          : { ...cell },
-      );
+    for (const [key, cell] of model.cellsInRange(targetSheet, target))
+      targetStyles.set(key, cell.style);
+  for (const [key, cell] of model.cellsInRange(sheet, source))
+    originals.set(
+      key,
+      command.type === "copy" && command.valuesOnly
+        ? { value: model.engine.get(sheet.meta.id, key) }
+        : { ...cell },
+    );
   const rows = source.r2 - source.r1 + 1,
     cols = source.c2 - source.c1 + 1;
   const vertical = cols === 1 && rows > 1;
@@ -337,55 +345,109 @@ export function executeStructural(
   }
   const modulo = (value: number, size: number) =>
     ((value % size) + size) % size;
+  if (command.type === "fill") {
+    let outputCells = 0;
+    for (const key of originals.keys()) {
+      const sr = rowOf(key),
+        sc = columnOf(key),
+        firstRow = target.r1 + modulo(sr - target.r1, rows),
+        firstColumn = target.c1 + modulo(sc - target.c1, cols);
+      outputCells +=
+        Math.max(0, Math.floor((target.r2 - firstRow) / rows) + 1) *
+          Math.max(0, Math.floor((target.c2 - firstColumn) / cols) + 1) -
+        (contains(target, sr, sc) ? 1 : 0);
+      if (outputCells > 1_000_000)
+        throw new Error(
+          "Fill output is limited to 1,000,000 nonempty cells per transaction",
+        );
+    }
+  }
   if (command.type === "copy" && command.cut)
     for (const key of originals.keys()) model.setCell(sheet, key, undefined);
-  const movedFormulaKeys = new Set<number>();
-  for (let r = target.r1; r <= target.r2; r++)
-    for (let c = target.c1; c <= target.c2; c++) {
-      if (command.type === "fill" && contains(source, r, c)) continue;
-      const origin = command.type === "fill" ? source : target;
-      const sr = source.r1 + modulo(r - origin.r1, rows),
-        sc = source.c1 + modulo(c - origin.c1, cols),
-        original = originals.get(keyOf(sr, sc));
-      let cell = original ? { ...original } : undefined;
-      if (cell?.formula && !(command.type === "copy" && command.cut))
-        cell.formula = shiftFormula(cell.formula, r - sr, c - sc);
-      if (command.type === "copy" && command.cut && cell?.formula) {
-        try {
-          cell.formula = printFormula(
-            mapReferences(parseFormula(cell.formula), (ref) => {
-              const origin = ref.sheet ?? sheet.meta.name;
-              if (
-                origin.toUpperCase() === sheet.meta.name.toUpperCase() &&
-                contains(source, ref.row, ref.column)
-              )
-                return {
-                  ...ref,
-                  row: ref.row + target.r1 - source.r1,
-                  column: ref.column + target.c1 - source.c1,
-                  sheet: ref.sheet ? targetSheet.meta.name : undefined,
-                };
-              return !ref.sheet && targetSheet !== sheet
-                ? { ...ref, sheet: sheet.meta.name }
-                : ref;
-            }),
-          );
-          movedFormulaKeys.add(keyOf(r, c));
-        } catch {
-          /* Unparsed formulas are kept with a diagnostic. */
-        }
+  // Blank source positions clear existing targets without visiting empty coordinates.
+  for (const [key, cell] of model.cellsInRange(targetSheet, target)) {
+    if (command.type === "fill" && contains(source, rowOf(key), columnOf(key)))
+      continue;
+    const origin = command.type === "copy" ? target : source;
+    if (
+      originals.has(
+        keyOf(
+          source.r1 + modulo(rowOf(key) - origin.r1, rows),
+          source.c1 + modulo(columnOf(key) - origin.c1, cols),
+        ),
+      )
+    )
+      continue;
+    model.setCell(
+      targetSheet,
+      key,
+      command.type === "copy" && command.valuesOnly
+        ? { style: cell.style }
+        : undefined,
+    );
+  }
+  function* positions(): Generator<[number, number, number, number]> {
+    for (const key of originals.keys()) {
+      const sr = rowOf(key),
+        sc = columnOf(key);
+      if (command.type === "copy") {
+        yield [target.r1 + sr - source.r1, target.c1 + sc - source.c1, sr, sc];
+      } else {
+        for (
+          let r = target.r1 + modulo(sr - target.r1, rows);
+          r <= target.r2;
+          r += rows
+        )
+          for (
+            let c = target.c1 + modulo(sc - target.c1, cols);
+            c <= target.c2;
+            c += cols
+          )
+            if (!contains(source, r, c)) yield [r, c, sr, sc];
       }
-      if (command.type === "copy" && command.valuesOnly)
-        cell = {
-          value: original?.value ?? null,
-          style: targetStyles.get(keyOf(r, c)),
-        };
-      if (series && cell)
-        cell.value =
-          series.first +
-          series.step * (vertical ? r - source.r1 : c - source.c1);
-      model.setCell(targetSheet, keyOf(r, c), cell);
     }
+  }
+  const movedFormulaKeys = new Set<number>();
+  for (const [r, c, sr, sc] of positions()) {
+    const original = originals.get(keyOf(sr, sc));
+    let cell = original ? { ...original } : undefined;
+    if (cell?.formula && !(command.type === "copy" && command.cut))
+      cell.formula = shiftFormula(cell.formula, r - sr, c - sc);
+    if (command.type === "copy" && command.cut && cell?.formula) {
+      try {
+        cell.formula = printFormula(
+          mapReferences(parseFormula(cell.formula), (ref) => {
+            const origin = ref.sheet ?? sheet.meta.name;
+            if (
+              origin.toUpperCase() === sheet.meta.name.toUpperCase() &&
+              contains(source, ref.row, ref.column)
+            )
+              return {
+                ...ref,
+                row: ref.row + target.r1 - source.r1,
+                column: ref.column + target.c1 - source.c1,
+                sheet: ref.sheet ? targetSheet.meta.name : undefined,
+              };
+            return !ref.sheet && targetSheet !== sheet
+              ? { ...ref, sheet: sheet.meta.name }
+              : ref;
+          }),
+        );
+        movedFormulaKeys.add(keyOf(r, c));
+      } catch {
+        /* Unparsed formulas are kept with a diagnostic. */
+      }
+    }
+    if (command.type === "copy" && command.valuesOnly)
+      cell = {
+        value: original?.value ?? null,
+        style: targetStyles.get(keyOf(r, c)),
+      };
+    if (series && cell)
+      cell.value =
+        series.first + series.step * (vertical ? r - source.r1 : c - source.c1);
+    model.setCell(targetSheet, keyOf(r, c), cell);
+  }
   if (command.type === "copy" && !command.valuesOnly) {
     const sourceRows = Array.from({ length: rows }, (_, i) => source.r1 + i),
       sourceColumns = Array.from({ length: cols }, (_, i) => source.c1 + i),

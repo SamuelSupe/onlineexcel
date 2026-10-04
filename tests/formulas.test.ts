@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
 import { WorkbookModel } from "../src/core/model";
 import { keyOf, parseRange } from "../src/core/address";
 import {
@@ -41,7 +42,39 @@ describe("Formula editing context", () => {
     });
   });
 });
+it("terminates extreme numeric formulas without wedging the calculation process", () => {
+  const result = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      `
+    import { WorkbookModel } from './src/core/model.ts';
+    const model = new WorkbookModel();
+    const sheetId = model.sheets[0].meta.id;
+    const values = ['=NETWORKDAYS(1e20,1e20)', '=WORKDAY(1e20,1,1e20)', '=COMBIN(1e20,1e18)', '=WORKDAY(2958465,1)'];
+    model.execute([{type:'setValues',sheetId,range:{r1:0,r2:3,c1:0,c2:0},values:values.map(value=>[value])}]);
+    console.log(JSON.stringify(model.region(sheetId,{r1:0,r2:3,c1:0,c2:0}).cells.map(cell=>cell.value)));
+  `,
+    ],
+    // This bounds nontermination, including cold Node/tsx startup on a mounted Linux workspace.
+    { timeout: 30000, encoding: "utf8" },
+  );
+  expect(JSON.parse(result)).toEqual(
+    Array.from({ length: 4 }, () => ({ error: "#NUM!" })),
+  );
+}, 35000);
 const cases: [string, unknown][] = [
+  ["WORKDAY(DATE(2024,1,5),1,DATE(2024,1,8))", 45300],
+  ["WORKDAY(DATE(2024,1,8),-1,DATE(2024,1,5))", 45295],
+  ["NETWORKDAYS(DATE(2024,1,1),DATE(2024,1,7),{45294;45294})", 4],
+  ["NETWORKDAYS(59,61)", 3],
+  ["WORKDAY(59,1)", 60],
+  ["YEAR(1e20)", { error: "#NUM!" }],
+  ['CONCAT(REPT("a",32767),"b")', { error: "#VALUE!" }],
+  ['TEXTJOIN(",",TRUE,REPT("a",32767),"b")', { error: "#VALUE!" }],
   ['MATCH(">5",{"abc";">5"},0)', 2],
   ['MATCH("123",{123;"123"},0)', 2],
   ['MATCH("=a*",{"abc";"=ABC"},0)', 2],

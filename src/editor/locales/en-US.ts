@@ -289,6 +289,8 @@ export default {
     array: "Array",
   },
   errors: {
+    "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX":
+      "CSV output is too large. Export a smaller range or use XLSX.",
     "Zoom must be between 0.5 and 2": "Zoom must be between 50% and 200%",
     "Resolve saved draft recovery before saving":
       "Choose whether to restore the saved draft or keep current content first",

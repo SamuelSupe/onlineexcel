@@ -209,7 +209,9 @@ export function createPersistence(
         guard();
         if (!dirty()) return;
         emit({ status: "saving", error: undefined, attempt: 0 });
-        const point = await workbook.createSavePoint();
+        const point = await workbook.createSavePoint({
+          signal: controller.signal,
+        });
         guard();
         const record: SavedWorkbook = {
           version: 1,

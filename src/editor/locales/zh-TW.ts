@@ -280,6 +280,8 @@ export default {
     array: "陣列",
   },
   errors: {
+    "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX":
+      "CSV 內容過大，請縮小匯出範圍或使用 XLSX。",
     "Zoom must be between 0.5 and 2": "縮放比例必須介於 50% 至 200%",
     "Resolve saved draft recovery before saving":
       "請先選擇還原草稿或使用目前內容",

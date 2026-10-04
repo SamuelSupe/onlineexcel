@@ -1,0 +1,18 @@
+{
+  "file": "artifacts/onlineexcel-0.1.1-performance-2a16855929dbcb96.tgz",
+  "sha256": "2a16855929dbcb9651fa8e8e4515faa8cbf1245c9f3a856cf309cf6166e92a36",
+  "size": 918611,
+  "verifiedAt": "2026-10-03T14:35:48.927Z",
+  "published": false,
+  "runtimeSourceSha256": "691f80587fef44af6a9283895cc2e45ff0b044700b4dad8f5dbb66aa1ca568f1",
+  "runtimeSourceFiles": 184,
+  "browserVerifiedArchive": ".cache/unpublished-performance/onlineexcel-471898489115ba66.tgz",
+  "browserVerifiedArchiveSha256": "471898489115ba666608df166e5ad51dc4adbc8e2f5dcdc1e572f440aa20396e",
+  "runtimeSourceMatchesBrowserVerifiedArchive": true,
+  "installedRuntimeSourceMatches": true,
+  "installedCacheExtraFiles": 133,
+  "installedCacheExtraNote": "The installed cache contains extra suffixed source/declaration copies (\" 2.ts\" / \" 2.tsx\"). Both clean archives have identical runtime/source file lists and bytes; every delivered file also matches the browser-tested installation.",
+  "packageSmoke": "PASS: ESM/IIFE runtime export parity, installed module exports and TypeScript declarations",
+  "browserChecks": "PASS: native JS, React StrictMode, Vue and strict CSP integration",
+  "sourceAudit": "docs/performance-audit-2026-10-03.json"
+}

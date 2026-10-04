@@ -7,7 +7,7 @@ import { WorkbookModel } from "../core/model";
 import { parseRange, keyOf, rowOf, columnOf } from "../core/address";
 import { readXlsx } from "../io/xlsx-read";
 import { CompatibilityError, writeModelXlsx } from "../io/xlsx-write";
-import { parseCsv, writeCsv } from "../io/csv";
+import { CsvSizeError, parseCsv, writeCsvRow } from "../io/csv";
 import { isArray, isError } from "../formula/values";
 import type { ChangeEvent, InputValue, ProgressEvent } from "../core/types";
 import {
@@ -22,6 +22,7 @@ let historyLimit: number | undefined;
 const cancelled = new Set<number>();
 let queue = Promise.resolve();
 const modules: WorkbookModule[] = [];
+const snapshots = new Map<string, ReturnType<WorkbookModel["openSnapshot"]>>();
 function emit(type: string, data: unknown): void {
   scope.postMessage({ event: type, data });
 }
@@ -197,8 +198,24 @@ scope.onmessage = (event) => {
         case "find":
           result = model.find(args.sheetId, args.search, args.matchCase);
           break;
-        case "savePoint":
-          result = { snapshot: model.snapshot(), revision: model.revision };
+        case "snapshotOpen": {
+          if (snapshots.has(args.token))
+            throw new Error("Duplicate snapshot reader");
+          const reader = model.openSnapshot();
+          snapshots.set(args.token, reader);
+          result = { snapshot: reader.snapshot, revision: reader.revision };
+          break;
+        }
+        case "snapshotRead": {
+          const reader = snapshots.get(args.token);
+          if (!reader) throw new Error("Snapshot reader is closed");
+          result = reader.read();
+          break;
+        }
+        case "snapshotClose":
+          snapshots.get(args.token)?.dispose();
+          snapshots.delete(args.token);
+          result = undefined;
           break;
         case "snapshot":
           result = model.snapshot();
@@ -304,7 +321,12 @@ scope.onmessage = (event) => {
           const sheet = model.sheet(args.sheetId);
           let r2 = 0,
             c2 = 0;
-          for (const key of sheet.cells.keys()) {
+          for (const [key, cell] of sheet.cells) {
+            if (
+              !cell.formula &&
+              (cell.value === undefined || cell.value === null)
+            )
+              continue;
             r2 = Math.max(r2, rowOf(key));
             c2 = Math.max(c2, columnOf(key));
           }
@@ -317,19 +339,60 @@ scope.onmessage = (event) => {
             }
           }
           const range = args.range ?? { r1: 0, c1: 0, r2, c2 },
-            rows: InputValue[][] = [];
+            lines: string[] = [],
+            maxLength = 64 * 1024 * 1024;
           model.validateArea(sheet, range);
+          const columns = range.c2 - range.c1 + 1,
+            rows = range.r2 - range.r1 + 1;
+          const limit = () =>
+            new WorkbookError(
+              "RESOURCE_LIMIT",
+              "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX",
+              { sheetId: args.sheetId, range, details: { maxLength } },
+            );
+          if (rows * (columns - 1) + 2 * (rows - 1) + 1 > maxLength)
+            throw limit();
+          writeCsvRow([], args.delimiter);
+          let length = 1,
+            pendingCells = 0,
+            lastCheckpoint = performance.now();
           for (let r = range.r1; r <= range.r2; r++) {
             const row: InputValue[] = [];
             for (let c = range.c1; c <= range.c2; c++) {
               const value = model.engine.get(args.sheetId, keyOf(r, c));
               row.push(isError(value) ? value.error : value);
             }
-            rows.push(row);
-            if (r % 2000 === 0) await checkpoint();
+            let line: string;
+            try {
+              line = writeCsvRow(
+                row,
+                args.delimiter,
+                maxLength - length - (r > range.r1 ? 2 : 0),
+              );
+            } catch (error) {
+              if (error instanceof CsvSizeError) throw limit();
+              throw error;
+            }
+            length += line.length + (r > range.r1 ? 2 : 0);
+            if (length > maxLength) throw limit();
+            lines.push(line);
+            pendingCells += columns;
+            if (
+              pendingCells >= 20000 ||
+              performance.now() - lastCheckpoint >= 8
+            ) {
+              progress({
+                stage: "export",
+                progress: (r - range.r1 + 1) / rows,
+              });
+              await checkpoint();
+              pendingCells = 0;
+              lastCheckpoint = performance.now();
+            }
           }
+          await checkpoint();
           result = {
-            text: writeCsv(rows, args.delimiter),
+            text: "\uFEFF" + lines.join("\r\n"),
             diagnostics: [
               {
                 code: "CSV_VALUES_ONLY",

@@ -201,6 +201,7 @@
       "maxArgs": 255,
       "category": "text",
       "elementwise": false,
+      "notes": "Result is limited to 32,767 characters.",
       "signature": "text1, ..."
     },
     {
@@ -818,6 +819,7 @@
       "maxArgs": 3,
       "category": "date",
       "elementwise": false,
+      "notes": "Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!.",
       "signature": "start_date, end_date, [holidays]"
     },
     {
@@ -1291,6 +1293,7 @@
       "maxArgs": 255,
       "category": "text",
       "elementwise": false,
+      "notes": "Result is limited to 32,767 characters.",
       "signature": "delimiter, ignore_empty, text1, ..."
     },
     {
@@ -1452,6 +1455,7 @@
       "maxArgs": 3,
       "category": "date",
       "elementwise": false,
+      "notes": "Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!.",
       "signature": "start_date, days, [holidays]"
     },
     {

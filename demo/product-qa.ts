@@ -86,6 +86,28 @@ export async function productChecks(
       4,
       "IndexedDB autosave persists committed data",
     );
+    await new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open(database, 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction("workbooks", "readwrite");
+        tx.objectStore("workbooks").put(stored, "legacy");
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onabort = tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+      };
+    });
+    equal(
+      await storage.load("legacy", new AbortController().signal),
+      stored,
+      "IndexedDB retains compatibility with existing unencoded drafts",
+    );
     await editor.select(id, "A1");
     key("ArrowDown", { ctrlKey: true, shiftKey: true });
     await waitUntil(() => editor.getSelection().range.r2 === 2);

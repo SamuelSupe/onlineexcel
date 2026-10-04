@@ -1,4 +1,11 @@
-import { address, columnOf, contains, keyOf, rowOf } from "../core/address";
+import {
+  address,
+  columnOf,
+  contains,
+  intersects,
+  keyOf,
+  rowOf,
+} from "../core/address";
 import type { Cell, Diagnostic, NamedRange, Rect, Scalar } from "../core/types";
 import { parseFormula, type AST } from "./parser";
 import { functions } from "./functions";
@@ -11,6 +18,7 @@ import {
   isError,
   matrix,
   number,
+  PendingCalculation,
   scalar,
   text,
   type ArrayValue,
@@ -24,6 +32,8 @@ export interface FormulaHost {
   canSpill(sheetId: string, range: Rect): boolean;
   named(name: string): NamedRange | undefined;
   formulas(): Iterable<{ sheetId: string; key: number; formula: string }>;
+  cells?(sheetId: string, range: Rect): Iterable<[number, Cell]>;
+  onInvalidate?(sheetId: string, key: number): void;
 }
 interface Dependency {
   sheetId: string;
@@ -49,12 +59,16 @@ export class FormulaEngine {
   private visiting = new Set<string>();
   private spillCells = new Map<string, Spill>();
   private spillKeys = new Map<string, string[]>();
+  private spillAreas = new Map<string, { sheetId: string; range: Rect }>();
+  private pendingSpills = new Map<string, Spill>();
+  private pendingSpillKeys = new Map<string, string[]>();
   private now = new Date();
   private newSpillCells = new Set<string>();
   private dirty = new Set<string>();
   private volatileCells = new Set<string>();
   private blockedSpills = new Set<string>();
   private diagnosticByCell = new Map<string, Diagnostic>();
+  private formulaKeys = new Map<string, number[]>();
   constructor(private host: FormulaHost) {}
   private id(sheetId: string, key: number): string {
     return `${sheetId}:${key}`;
@@ -70,6 +84,9 @@ export class FormulaEngine {
     this.rangeDependents.clear();
     this.spillCells.clear();
     this.spillKeys.clear();
+    this.spillAreas.clear();
+    this.pendingSpills.clear();
+    this.pendingSpillKeys.clear();
     this.visiting.clear();
     this.astCache.clear();
     this.newSpillCells.clear();
@@ -77,6 +94,7 @@ export class FormulaEngine {
     this.volatileCells.clear();
     this.blockedSpills.clear();
     this.diagnosticByCell.clear();
+    this.formulaKeys.clear();
     for (const cell of this.host.formulas())
       this.updateFormula(cell.sheetId, cell.key, cell.formula);
   }
@@ -130,6 +148,7 @@ export class FormulaEngine {
       previous = this.compiled.get(owner);
     if (!previous && !formula) return;
     if (previous?.formula === formula) return;
+    if (!!previous !== !!formula) this.formulaKeys.delete(sheetId);
     for (const { sheetId: sid, range } of previous?.dependencies ?? []) {
       if (range.r1 === range.r2 && range.c1 === range.c2) {
         const id = this.id(sid, keyOf(range.r1, range.c1)),
@@ -146,7 +165,10 @@ export class FormulaEngine {
     this.volatileCells.delete(owner);
     this.blockedSpills.delete(owner);
     this.diagnosticByCell.delete(owner);
-    if (!formula) return;
+    if (!formula) {
+      this.clearPendingSpill(owner);
+      return;
+    }
     let ast: AST | undefined;
     try {
       ast = this.astCache.get(formula) ?? parseFormula(formula);
@@ -202,15 +224,22 @@ export class FormulaEngine {
       const id = queue[i];
       this.cache.delete(id);
       if (this.compiled.has(id)) this.dirty.add(id);
-      for (const spill of this.spillKeys.get(id) ?? []) {
+      for (const spill of this.pendingSpillKeys.get(id) ?? []) add(spill);
+      const previousSpill = this.spillKeys.get(id);
+      if (previousSpill?.length) this.pendingSpillKeys.set(id, previousSpill);
+      for (const spill of previousSpill ?? []) {
+        const previous = this.spillCells.get(spill);
+        if (previous) this.pendingSpills.set(spill, previous);
         this.spillCells.delete(spill);
         add(spill);
       }
       this.spillKeys.delete(id);
+      this.spillAreas.delete(id);
       for (const owner of this.dependents.get(id) ?? []) add(owner);
       const [sid, key] = this.split(id),
         row = rowOf(key),
         col = columnOf(key);
+      this.host.onInvalidate?.(sid, key);
       for (const bucket of [Math.floor(row / 256), -1])
         for (const [owner, ranges] of this.rangeDependents
           .get(sid)
@@ -220,10 +249,16 @@ export class FormulaEngine {
     this.now = new Date();
   }
   recalculate(): void {
-    for (let pass = 0; pass < 32; pass++) {
-      for (const id of this.dirty) {
+    for (const _ of this.recalculationSteps()) {
+      /* Drain the synchronous calculation. */
+    }
+  }
+  private *recalculationSteps(): Generator<void> {
+    for (let pass = 0; pass < Math.max(32, this.compiled.size + 1); pass++) {
+      for (const id of this.calculationOrder()) {
         const [sid, key] = this.split(id);
         this.get(sid, key);
+        yield;
       }
       if (!this.newSpillCells.size) return;
       const changed = [...this.newSpillCells].map((id) => {
@@ -233,14 +268,87 @@ export class FormulaEngine {
       this.newSpillCells.clear();
       this.invalidate(changed, false);
     }
-    for (const id of this.compiled.keys())
-      if (!this.cache.has(id)) this.cache.set(id, error("#CALC!"));
+    for (const id of this.dirty) {
+      this.cache.set(id, error("#CALC!"));
+      const [sheetId, key] = this.split(id);
+      this.diagnosticByCell.set(id, {
+        code: "FORMULA_ERROR",
+        severity: "error",
+        message: "Dynamic array dependencies did not converge.",
+        sheetId,
+        range: address(rowOf(key), columnOf(key)),
+      });
+    }
+    this.dirty.clear();
+    this.pendingSpills.clear();
+    this.pendingSpillKeys.clear();
+  }
+  private clearPendingSpill(owner: string): void {
+    for (const key of this.pendingSpillKeys.get(owner) ?? [])
+      if (this.pendingSpills.get(key)?.owner === owner)
+        this.pendingSpills.delete(key);
+    this.pendingSpillKeys.delete(owner);
+  }
+  private *referencedFormulas(id: string): Generator<string> {
+    for (const { sheetId, range } of this.compiled.get(id)?.dependencies ??
+      []) {
+      if (range.r1 === range.r2 && range.c1 === range.c2) {
+        yield this.id(sheetId, keyOf(range.r1, range.c1));
+        continue;
+      }
+      let keys = this.formulaKeys.get(sheetId);
+      if (!keys) {
+        keys = [];
+        for (const formula of this.compiled.keys()) {
+          const [sid, key] = this.split(formula);
+          if (sid === sheetId) keys.push(key);
+        }
+        keys.sort((a, b) => a - b);
+        this.formulaKeys.set(sheetId, keys);
+      }
+      const first = keyOf(range.r1, range.c1),
+        last = keyOf(range.r2, range.c2);
+      let lo = 0,
+        hi = keys.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (keys[mid] < first) lo = mid + 1;
+        else hi = mid;
+      }
+      for (let i = lo; i < keys.length && keys[i] <= last; i++)
+        if (contains(range, rowOf(keys[i]), columnOf(keys[i])))
+          yield this.id(sheetId, keys[i]);
+    }
+  }
+  private *calculationOrder(): Generator<string> {
+    const seen = new Set<string>();
+    for (const root of this.dirty) {
+      if (seen.has(root) || this.cache.has(root)) continue;
+      const stack = [{ id: root, references: this.referencedFormulas(root) }];
+      seen.add(root);
+      while (stack.length) {
+        const frame = stack[stack.length - 1];
+        const next = frame.references.next();
+        if (next.done) {
+          stack.pop();
+          yield frame.id;
+        } else if (
+          !seen.has(next.value) &&
+          this.dirty.has(next.value) &&
+          !this.cache.has(next.value)
+        ) {
+          seen.add(next.value);
+          stack.push({
+            id: next.value,
+            references: this.referencedFormulas(next.value),
+          });
+        }
+      }
+    }
   }
   async recalculateAsync(yieldControl: () => Promise<void>): Promise<void> {
     let count = 0;
-    for (const id of this.compiled.keys()) {
-      const [sid, key] = this.split(id);
-      this.get(sid, key);
+    for (const _ of this.recalculationSteps()) {
       if (++count % 1000 === 0) await yieldControl();
     }
   }
@@ -253,25 +361,65 @@ export class FormulaEngine {
     const [, anchor] = this.split(spill.owner);
     return { row: rowOf(anchor), column: columnOf(anchor) };
   }
+  *spillIntersections(sheetId: string, range: Rect): Generator<Rect> {
+    for (const spill of this.spillAreas.values())
+      if (spill.sheetId === sheetId && intersects(spill.range, range))
+        yield spill.range;
+  }
   get(sheetId: string, key: number): Scalar {
-    const id = this.id(sheetId, key),
-      raw = this.host.cell(sheetId, key);
-    if (!raw?.formula)
+    const raw = this.host.cell(sheetId, key);
+    if (!raw?.formula && !this.spillCells.size && !this.pendingSpills.size)
+      return raw?.value ?? null;
+    const id = this.id(sheetId, key);
+    if (!raw?.formula) {
+      const pending = this.pendingSpills.get(id);
+      if (pending && (raw?.value === undefined || raw.value === null)) {
+        if (this.visiting.has(pending.owner)) return error("#CYCLE!");
+        const [sid, anchor] = this.split(pending.owner);
+        const value = this.get(sid, anchor);
+        if (isError(value) && value.error === "#CYCLE!") return value;
+      }
       return this.spillCells.get(id)?.value ?? raw?.value ?? null;
-    if (this.visiting.has(id) || this.visiting.size > 1000)
-      return error("#CYCLE!");
+    }
+    if (this.visiting.has(id)) return error("#CYCLE!");
     if (this.cache.has(id)) return scalar(this.cache.get(id)!);
+    if (this.visiting.size) throw new PendingCalculation(sheetId, key);
+    const stack = [{ sheetId, key, id }];
+    this.visiting.add(id);
+    try {
+      while (stack.length) {
+        const frame = stack[stack.length - 1];
+        try {
+          this.calculateCell(frame.sheetId, frame.key);
+          this.visiting.delete(frame.id);
+          stack.pop();
+        } catch (e) {
+          if (!(e instanceof PendingCalculation)) throw e;
+          const dependency = this.id(e.sheetId, e.key);
+          this.visiting.add(dependency);
+          stack.push({ sheetId: e.sheetId, key: e.key, id: dependency });
+        }
+      }
+    } finally {
+      this.visiting.clear();
+    }
+    return scalar(this.cache.get(id)!);
+  }
+  private calculateCell(sheetId: string, key: number): void {
+    const id = this.id(sheetId, key),
+      raw = this.host.cell(sheetId, key)!;
     if (!this.compiled.has(id)) this.updateFormula(sheetId, key, raw.formula);
     const compiled = this.compiled.get(id)!;
-    this.visiting.add(id);
     let result: Value;
     try {
       result = compiled.ast
         ? this.evaluate(compiled.ast, sheetId, rowOf(key), columnOf(key))
         : error("#VALUE!");
     } catch (e) {
+      if (e instanceof PendingCalculation) throw e;
       result = isError(e) ? e : error("#VALUE!");
     }
+    if (typeof result === "number") result = finite(result);
     if (isArray(result)) {
       const source = result,
         row = rowOf(key),
@@ -314,8 +462,10 @@ export class FormulaEngine {
               break;
             }
             try {
-              line.push(source.get(r, c));
+              const value = source.get(r, c);
+              line.push(typeof value === "number" ? finite(value) : value);
             } catch (e) {
+              if (e instanceof PendingCalculation) throw e;
               line.push(isError(e) ? e : error("#VALUE!"));
             }
             if (r || c) keys.push(targetId);
@@ -325,12 +475,23 @@ export class FormulaEngine {
         else {
           result = matrix(values);
           this.spillKeys.set(id, keys);
+          if (keys.length)
+            this.spillAreas.set(id, {
+              sheetId,
+              range: {
+                r1: row,
+                c1: col,
+                r2: row + source.rows - 1,
+                c2: col + source.columns - 1,
+              },
+            });
           let i = 0;
           for (let r = 0; r < source.rows; r++)
             for (let c = 0; c < source.columns; c++)
               if (r || c) {
                 const target = keys[i++];
-                const previous = this.spillCells.get(target);
+                const previous =
+                  this.spillCells.get(target) ?? this.pendingSpills.get(target);
                 if (
                   !previous ||
                   JSON.stringify(previous.value) !==
@@ -342,7 +503,10 @@ export class FormulaEngine {
         }
       }
     }
-    this.visiting.delete(id);
+    // Retain cycle provenance until an edit breaks the cycle; later dependents must not read blanks.
+    const resultScalar = scalar(result);
+    if (!isError(resultScalar) || resultScalar.error !== "#CYCLE!")
+      this.clearPendingSpill(id);
     this.cache.set(id, result);
     this.dirty.delete(id);
     const value = scalar(result);
@@ -362,7 +526,7 @@ export class FormulaEngine {
         message: !compiled.ast
           ? "Formula could not be parsed; original text is preserved."
           : isError(value) && value.error === "#CYCLE!"
-            ? "Circular or excessively deep formula dependency."
+            ? "Circular formula dependency."
             : "Unknown function or name; cached Excel values are not used.",
         sheetId,
         range: address(rowOf(key), columnOf(key)),
@@ -385,19 +549,58 @@ export class FormulaEngine {
         range: address(rowOf(key), columnOf(key)),
       });
     } else this.diagnosticByCell.delete(id);
-    return value;
   }
   arrayResult(sheetId: string, key: number): Value | undefined {
     this.get(sheetId, key);
     return this.cache.get(this.id(sheetId, key));
   }
   private range(sheetId: string, rect: Rect): ArrayValue {
+    let reads = 0;
     return {
       rows: rect.r2 - rect.r1 + 1,
       columns: rect.c2 - rect.c1 + 1,
-      get: (r, c) => this.get(sheetId, keyOf(rect.r1 + r, rect.c1 + c)),
+      get: (r, c) => {
+        // Bound dense traversal while retaining sparse aggregates over the entire sheet.
+        if (++reads > 10_000_000) throw error("#CALC!");
+        return this.get(sheetId, keyOf(rect.r1 + r, rect.c1 + c));
+      },
+      entries:
+        this.host.cells &&
+        (rect.r2 - rect.r1 + 1) * (rect.c2 - rect.c1 + 1) > 4096
+          ? () => this.rangeEntries(sheetId, rect)
+          : undefined,
       reference: { sheetId, row: rect.r1, column: rect.c1 },
     };
+  }
+  private *rangeEntries(
+    sheetId: string,
+    rect: Rect,
+  ): Generator<[number, number, Scalar]> {
+    // Resolve invalidated spill owners before enumerating their current output cells.
+    const owners = new Set<string>();
+    for (const [id, spill] of this.pendingSpills) {
+      const [sid, key] = this.split(id);
+      if (sid === sheetId && contains(rect, rowOf(key), columnOf(key)))
+        owners.add(spill.owner);
+    }
+    for (const owner of owners) {
+      const [sid, key] = this.split(owner);
+      this.get(sid, key);
+    }
+    const keys = new Set<number>();
+    for (const [key, cell] of this.host.cells!(sheetId, rect))
+      if (cell.formula || (cell.value !== undefined && cell.value !== null))
+        keys.add(key);
+    for (const [id] of this.spillCells) {
+      const [sid, key] = this.split(id);
+      if (sid === sheetId && contains(rect, rowOf(key), columnOf(key)))
+        keys.add(key);
+    }
+    for (const key of [...keys].sort((a, b) => a - b)) {
+      const value = this.get(sheetId, key);
+      if (value !== null)
+        yield [rowOf(key) - rect.r1, columnOf(key) - rect.c1, value];
+    }
   }
   private broadcast(
     values: Value[],
@@ -416,6 +619,7 @@ export class FormulaEngine {
             evaluate(values.map((v) => this.arrayElement(v, r, c))),
           );
         } catch (e) {
+          if (e instanceof PendingCalculation) throw e;
           return isError(e) ? e : error("#VALUE!");
         }
       },
@@ -446,7 +650,8 @@ export class FormulaEngine {
         try {
           if (bool(test.get(r, c))) needsTrue = true;
           else needsFalse = true;
-        } catch {
+        } catch (e) {
+          if (e instanceof PendingCalculation) throw e;
           // Invalid conditions propagate at their output position, not across the array.
         }
       }
@@ -480,6 +685,7 @@ export class FormulaEngine {
       try {
         return this.evaluate(a, sheetId, row, column);
       } catch (e) {
+        if (e instanceof PendingCalculation) throw e;
         return isError(e) ? e : error("#VALUE!");
       }
     };

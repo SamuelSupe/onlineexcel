@@ -3,9 +3,18 @@ export interface ArrayValue {
   rows: number;
   columns: number;
   get(row: number, column: number): Scalar;
+  /** Non-null cells in row-major order; omitted for computed/dense arrays. */
+  entries?(): Iterable<[row: number, column: number, value: Scalar]>;
   reference?: { sheetId: string; row: number; column: number };
 }
 export type Value = Scalar | ArrayValue;
+// Evaluation suspends at an uncached reference instead of recursing through the JS stack.
+export class PendingCalculation {
+  constructor(
+    readonly sheetId: string,
+    readonly key: number,
+  ) {}
+}
 export const error = (code: ErrorCode): CellError => ({ error: code });
 export const isError = (value: unknown): value is CellError =>
   !!value && typeof value === "object" && "error" in value;
@@ -39,11 +48,22 @@ export function bool(value: Value): boolean {
     return v.toUpperCase() === "TRUE";
   return number(v) !== 0;
 }
-export function* flatten(values: Value[]): Generator<Scalar> {
+export function* flatten(
+  values: Value[],
+  skipBlanks = false,
+): Generator<Scalar> {
   for (const v of values) {
     if (isArray(v)) {
-      for (let r = 0; r < v.rows; r++)
-        for (let c = 0; c < v.columns; c++) yield v.get(r, c);
+      if (skipBlanks && v.entries) {
+        for (const [, , value] of v.entries()) yield value;
+      } else {
+        if (v.rows * v.columns > 10_000_000) throw error("#CALC!");
+        for (let r = 0; r < v.rows; r++)
+          for (let c = 0; c < v.columns; c++) {
+            const value = v.get(r, c);
+            if (!skipBlanks || value !== null) yield value;
+          }
+      }
     } else yield v;
   }
 }
@@ -51,7 +71,7 @@ export function numbers(values: Value[], includeLogical = false): number[] {
   const out: number[] = [];
   for (const value of values) {
     const ranged = isArray(value);
-    for (const v of flatten([value])) {
+    for (const v of flatten([value], true)) {
       if (isError(v)) throw v;
       if (typeof v === "number") out.push(v);
       else if (includeLogical && v !== null)

@@ -7,6 +7,7 @@ import {
   number,
   serialDate,
   text,
+  type Value,
 } from "./values";
 import type { FunctionContext } from "./registry";
 function date(value: Parameters<typeof number>[0], ctx: FunctionContext): Date {
@@ -190,44 +191,102 @@ define(
   },
   true,
 );
-define("NETWORKDAYS", 2, 3, "date", (a, ctx) => {
-  let start = Math.floor(number(a[0])),
-    end = Math.floor(number(a[1])),
-    sign = 1;
-  if (start > end) {
-    [start, end] = [end, start];
-    sign = -1;
+function calendar(ctx: FunctionContext, holidayValues: Value | undefined) {
+  const lastDate = dateSerial(new Date(Date.UTC(9999, 11, 31)), ctx.dateSystem);
+  const day = (value: Value): number => {
+    const serial = Math.floor(number(value));
+    if (serial < 0 || serial > lastDate) throw error("#NUM!");
+    return serial;
+  };
+  const weekdays = (start: number, end: number): number => {
+    if (end < start) return 0;
+    // Serial 60 repeats February 28 in the 1900 system; do not count across that discontinuity.
+    if (ctx.dateSystem === 1900 && start < 60 && end >= 60)
+      return weekdays(start, 59) + weekdays(60, end);
+    const length = end - start + 1;
+    let count = Math.floor(length / 7) * 5;
+    const first = serialDate(start, ctx.dateSystem).getUTCDay();
+    for (let i = 0; i < length % 7; i++) {
+      const weekday = (first + i) % 7;
+      if (weekday !== 0 && weekday !== 6) count++;
+    }
+    return count;
+  };
+  const holidays = new Set<number>();
+  for (const value of flatten(
+    holidayValues === undefined ? [] : [holidayValues],
+  )) {
+    const serial = day(value);
+    if (weekdays(serial, serial)) holidays.add(serial);
   }
-  if (end - start > 1_000_000) return error("#NUM!");
-  const holidays = new Set(
-    [...flatten(a[2] === undefined ? [] : [a[2]])].map((v) =>
-      Math.floor(number(v)),
-    ),
-  );
-  let n = 0;
-  for (let d = start; d <= end; d++) {
-    const day = serialDate(d, ctx.dateSystem).getUTCDay();
-    if (day !== 0 && day !== 6 && !holidays.has(d)) n++;
-  }
-  return sign * n;
-});
-define("WORKDAY", 2, 3, "date", (a, ctx) => {
-  let d = Math.floor(number(a[0])),
-    remaining = Math.abs(Math.trunc(number(a[1])));
-  if (remaining > 1_000_000) return error("#NUM!");
-  const sign = number(a[1]) < 0 ? -1 : 1,
-    holidays = new Set(
-      [...flatten(a[2] === undefined ? [] : [a[2]])].map((v) =>
-        Math.floor(number(v)),
-      ),
-    );
-  while (remaining) {
-    d += sign;
-    const day = serialDate(d, ctx.dateSystem).getUTCDay();
-    if (day !== 0 && day !== 6 && !holidays.has(d)) remaining--;
-  }
-  return d;
-});
+  const sorted = [...holidays].sort((a, b) => a - b);
+  const before = (serial: number) => {
+    let lo = 0,
+      hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (sorted[mid] < serial) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  return {
+    day,
+    lastDate,
+    count: (start: number, end: number) =>
+      end < start
+        ? 0
+        : weekdays(start, end) - (before(end + 1) - before(start)),
+  };
+}
+define(
+  "NETWORKDAYS",
+  2,
+  3,
+  "date",
+  (a, ctx) => {
+    const dates = calendar(ctx, a[2]);
+    let start = dates.day(a[0]),
+      end = dates.day(a[1]),
+      sign = 1;
+    if (start > end) {
+      [start, end] = [end, start];
+      sign = -1;
+    }
+    return sign * dates.count(start, end);
+  },
+  false,
+  "Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!.",
+);
+define(
+  "WORKDAY",
+  2,
+  3,
+  "date",
+  (a, ctx) => {
+    const dates = calendar(ctx, a[2]),
+      start = dates.day(a[0]),
+      days = Math.trunc(number(a[1])),
+      remaining = Math.abs(days),
+      sign = days < 0 ? -1 : 1;
+    if (!remaining) return start;
+    const count = (distance: number) =>
+      sign > 0
+        ? dates.count(start + 1, start + distance)
+        : dates.count(start - distance, start - 1);
+    let lo = 1,
+      hi = sign > 0 ? dates.lastDate - start : start;
+    if (count(hi) < remaining) return error("#NUM!");
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (count(mid) < remaining) lo = mid + 1;
+      else hi = mid;
+    }
+    return start + sign * lo;
+  },
+  false,
+  "Dates and holidays must be within serial 0 through 9999-12-31 in the workbook date system; out-of-range dates return #NUM!.",
+);
 define(
   "DAYS360",
   2,

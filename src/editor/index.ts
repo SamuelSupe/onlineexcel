@@ -335,7 +335,7 @@ function mountView(
   function schedule() {
     if (!frame && !destroyed) frame = requestAnimationFrame(render);
   }
-  function resize() {
+  function measureViewport() {
     gridLayer.style.transform = `scale(${zoom})`;
     gridLayer.style.width = `${100 / zoom}%`;
     gridLayer.style.height = `${100 / zoom}%`;
@@ -343,9 +343,24 @@ function mountView(
     height = Math.max(1, viewport.clientHeight / zoom - 14);
     schedule();
     formulaHelp.position();
+  }
+  function resize() {
+    measureViewport();
     if (sheet) void run(() => fetchVisible());
   }
+  let geometryKey = "";
   function geometry() {
+    const key = JSON.stringify([
+      sheet.rowCount,
+      sheet.rowHeights,
+      sheet.hiddenRows,
+      sheet.filteredRows,
+      sheet.columnCount,
+      sheet.columnWidths,
+      sheet.hiddenColumns,
+    ]);
+    if (key === geometryKey) return;
+    geometryKey = key;
     rows = new Axis(
       sheet.rowCount,
       sheet.rowHeights,
@@ -395,7 +410,21 @@ function mountView(
       tabs.append(button);
     }
   }
-  async function refresh() {
+  let refreshPromise: Promise<void> | undefined;
+  let refreshAgain = false;
+  function refresh(): Promise<void> {
+    refreshAgain = true;
+    refreshPromise ??= (async () => {
+      do {
+        refreshAgain = false;
+        await refreshNow();
+      } while (refreshAgain && !destroyed);
+    })().finally(() => {
+      refreshPromise = undefined;
+    });
+    return refreshPromise;
+  }
+  async function refreshNow() {
     const metadata = await workbook.getMetadata();
     if (destroyed) return;
     sheets = metadata.sheets;
@@ -416,7 +445,7 @@ function mountView(
     renderTabs();
     cachedRanges = [];
     cells.clear();
-    resize();
+    measureViewport();
     await fetchVisible(true);
     await updateSelection();
     for (const [action, enabled] of [
@@ -619,7 +648,19 @@ function mountView(
       selectionData = [];
       return;
     }
-    const result = await workbook.getRegion(sid, range);
+    const result = cachedRanges.some(
+      (r) =>
+        r.r1 <= range.r1 &&
+        r.c1 <= range.c1 &&
+        r.r2 >= range.r2 &&
+        r.c2 >= range.c2,
+    )
+      ? {
+          cells: [...cells.values()]
+            .filter((c) => contains(range, c.row, c.column))
+            .sort((a, b) => a.row - b.row || a.column - b.column),
+        }
+      : await workbook.getRegion(sid, range);
     if (destroyed || version !== selectedVersion || sid !== sheetId) return;
     selectionData = result.cells;
     selectionReady = true;
@@ -649,6 +690,7 @@ function mountView(
   }
   async function select(id: string, range: string | Rect) {
     if (isEditing || pendingCommit) await commitEdit();
+    if (refreshPromise) await refreshPromise;
     if (id !== sheetId) await activate(id);
     const next = parseRange(range);
     if (next.r2 >= sheet.rowCount || next.c2 >= sheet.columnCount)
@@ -1963,6 +2005,10 @@ function mountView(
   diagnosticsButton.onclick = () => run(() => action("diagnostics"));
   unsubscribers.push(
     workbook.on("change", () => {
+      cachedRanges = [];
+      loadVersion++;
+      selectedVersion++;
+      selectionReady = false;
       void run(refresh);
     }),
     workbook.on("calculation", (event) => {

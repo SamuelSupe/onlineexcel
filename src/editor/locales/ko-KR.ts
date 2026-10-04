@@ -287,6 +287,8 @@ export default {
     array: "배열",
   },
   errors: {
+    "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX":
+      "CSV가 너무 큽니다. 내보낼 범위를 줄이거나 XLSX를 사용하세요.",
     "Zoom must be between 0.5 and 2":
       "확대 비율은 50%에서 200% 사이여야 합니다",
     "Resolve saved draft recovery before saving":

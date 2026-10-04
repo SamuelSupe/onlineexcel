@@ -45,6 +45,8 @@ async function cleanup() {
 }
 const run = document.querySelector<HTMLButtonElement>("#run")!,
   perf = document.querySelector<HTMLButtonElement>("#perf")!;
+const persistencePerf =
+  document.querySelector<HTMLButtonElement>("#persistence-perf")!;
 run.onclick = async () => {
   run.disabled = true;
   output.textContent = "Testing built ESM package and Workers";
@@ -828,18 +830,32 @@ perf.onclick = async () => {
       scroll = root.querySelector<HTMLElement>(".scroll")!,
       canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
     const editing: number[] = [];
+    const editSamples: {
+      cell: string;
+      requestMs: number;
+      feedbackMs: number;
+      visible: boolean;
+    }[] = [];
     for (let i = 0; i < 30; i++) {
       const cell = `B${(i % 10) + 1}`;
       await currentEditor.select("bench", cell);
       await frame();
       const start = performance.now();
       await book.setValues("bench", cell, [[i + 100]]);
+      const requestMs = performance.now() - start;
       // Wait for the editor's visible selection to reflect the committed revision, then a paint.
       await waitUntil(
         () => root.querySelector(".a11y")?.textContent === `${cell} ${i + 100}`,
       );
       await frame();
-      editing.push(performance.now() - start);
+      const feedbackMs = performance.now() - start;
+      editing.push(feedbackMs);
+      editSamples.push({
+        cell,
+        requestMs,
+        feedbackMs,
+        visible: document.visibilityState === "visible",
+      });
     }
     editing.sort((a, b) => a - b);
     const editP95Ms = editing[Math.floor(editing.length * 0.95)];
@@ -855,6 +871,41 @@ perf.onclick = async () => {
     }
     const fps = 1000 / (times.reduce((a, b) => a + b, 0) / times.length);
     times.sort((a, b) => a - b);
+    await book.setStyle("bench", "B1:J300", { numberFormat: "0.00" });
+    await currentEditor.select("bench", "B1");
+    const formattedFrames: number[] = [];
+    previous = performance.now();
+    for (let i = 0; i < 180; i++) {
+      scroll.scrollTop = i * 32;
+      await frame();
+      const now = performance.now();
+      formattedFrames.push(now - previous);
+      previous = now;
+    }
+    const formattedScrollFps =
+      1000 /
+      (formattedFrames.reduce((a, b) => a + b, 0) / formattedFrames.length);
+    await book.filter("bench", "A1:J100000", [
+      { column: 1, operator: "gt", value: 50 },
+    ]);
+    await currentEditor.select("bench", "D1");
+    const filteredEdits: number[] = [];
+    const filteredRequests: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const start = performance.now();
+      await book.setValues("bench", "D1", [[i + 200]]);
+      filteredRequests.push(performance.now() - start);
+      await waitUntil(
+        () =>
+          root.querySelector(".a11y")?.textContent ===
+          `D1 ${(i + 200).toFixed(2)}`,
+      );
+      await frame();
+      filteredEdits.push(performance.now() - start);
+    }
+    filteredEdits.sort((a, b) => a - b);
+    const filteredEditP95Ms =
+      filteredEdits[Math.floor(filteredEdits.length * 0.95)];
     const info = {
       userAgent: navigator.userAgent,
       viewport: {
@@ -867,16 +918,141 @@ perf.onclick = async () => {
       editP95Ms,
       scrollFps: fps,
       frameP95Ms: times[Math.floor(times.length * 0.95)],
+      formattedScrollFps,
+      filteredEditP95Ms,
+      filteredRequests,
+      filteredEdits,
+      filteredRows:
+        (await book.getMetadata()).sheets[0].filteredRows?.length ?? 0,
+      editSamples,
+      frameTimesMs: times,
       windowErrors: failures,
     };
     log(JSON.stringify(info, null, 2));
     log(
-      (fps >= 50 && editP95Ms <= 100 ? "PASS" : "TARGET NOT MET") +
-        " browser performance gates",
+      (fps >= 50 &&
+      editP95Ms <= 100 &&
+      formattedScrollFps >= 50 &&
+      filteredEditP95Ms <= 100
+        ? "PASS"
+        : "TARGET NOT MET") + " browser performance gates",
     );
   } catch (error) {
     log("FAIL " + (error as Error).stack);
   } finally {
     perf.disabled = false;
+  }
+};
+
+persistencePerf.onclick = async () => {
+  if (
+    !currentBook ||
+    !currentEditor ||
+    (await currentBook.getMetadata()).sheets[0]?.id !== "bench"
+  ) {
+    log("Run the million-cell benchmark first.");
+    return;
+  }
+  persistencePerf.disabled = true;
+  const book = currentBook,
+    editor = currentEditor;
+  const database = "onlineexcel-perf-" + crypto.randomUUID();
+  const storage = library.createIndexedDBStorage(database);
+  const persistence = library.createPersistence(book, {
+    key: "benchmark",
+    storage,
+    maxRetries: 0,
+    warnBeforeUnload: false,
+  });
+  const root = container.firstElementChild!.shadowRoot!;
+  const edits: { requestMs: number; feedbackMs: number }[] = [];
+  try {
+    await editor.select("bench", "F1");
+    await persistence.ready;
+    await waitUntil(() => persistence.getState().status === "saving");
+    for (let i = 0; i < 20; i++) {
+      const start = performance.now();
+      await book.setValues("bench", "F1", [[300 + i]]);
+      const requestMs = performance.now() - start;
+      await waitUntil(
+        () =>
+          root.querySelector(".a11y")?.textContent ===
+          `F1 ${(300 + i).toFixed(2)}`,
+      );
+      await frame();
+      edits.push({ requestMs, feedbackMs: performance.now() - start });
+    }
+    await persistence.save();
+    const saved = await storage.load("benchmark", new AbortController().signal);
+    equal(
+      saved?.snapshot.sheets[0].cells.length,
+      1_000_000,
+      "Million-cell autosave retains the complete cell collection",
+    );
+    equal(
+      saved?.snapshot.sheets[0].cells.find(([key]) => key === keyOf(24, 9))?.[1]
+        .formula,
+      "=SUM(A25:I25)",
+      "Million-cell autosave retains unevaluated formulas",
+    );
+    equal(
+      saved?.snapshot.sheets[0].cells.find(([key]) => key === keyOf(0, 5))?.[1]
+        .value,
+      319,
+      "Million-cell autosave retains edits made during a save",
+    );
+    equal(
+      persistence.hasUnsavedChanges(),
+      false,
+      "Million-cell autosave reaches the latest revision",
+    );
+    const cancelled = new AbortController();
+    const cancellation = setTimeout(() => cancelled.abort(), 0);
+    let cancelledName = "";
+    try {
+      await storage.save(
+        "benchmark",
+        { ...saved!, savedAt: -1 },
+        cancelled.signal,
+      );
+    } catch (error) {
+      cancelledName = (error as Error).name;
+    } finally {
+      clearTimeout(cancellation);
+    }
+    equal(
+      cancelledName,
+      "AbortError",
+      "Million-cell storage encoding can be cancelled",
+    );
+    equal(
+      (await storage.load("benchmark", new AbortController().signal))?.savedAt,
+      saved?.savedAt,
+      "Cancelled encoding preserves the previous durable record",
+    );
+    const times = edits.map((item) => item.feedbackMs).sort((a, b) => a - b);
+    const p95Ms = times[Math.floor(times.length * 0.95)];
+    log(
+      JSON.stringify(
+        {
+          phase: "million-cell-autosave",
+          editP95Ms: p95Ms,
+          edits,
+          windowErrors: failures,
+        },
+        null,
+        2,
+      ),
+    );
+    log(
+      (p95Ms <= 100 ? "PASS" : "TARGET NOT MET") +
+        " autosave editing feedback gate",
+    );
+  } catch (error) {
+    log("FAIL " + (error as Error).stack);
+  } finally {
+    persistence.dispose();
+    indexedDB.deleteDatabase(database);
+    persistencePerf.disabled = false;
   }
 };

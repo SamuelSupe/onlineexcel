@@ -59,7 +59,7 @@ await workbook.dispose();
 | `sort(sheetId, range, keys, header?)`                                      | keys 包含绝对列索引和 asc/desc；支持多关键字；header=true 排除第一行                                                                                    |
 | `filter(sheetId, range, rules)`                                            | 第一行为标题；跨列及比较条件采用 AND，每列最多两个；另支持单列值列表多选，见下文；range=undefined 清除                                                  |
 | `copyRange(sheetId, range, targetSheetId, target, { cut?, valuesOnly? }?)` | 复制时平移相对引用；剪切更新引用；valuesOnly 只粘贴结果                                                                                                 |
-| `fill(sheetId, source, target)`                                            | 重复区域、平移公式；一维等差数字源向两侧扩展，其他模式重复；保留源值                                                                                                          |
+| `fill(sheetId, source, target)`                                            | 重复区域、平移公式；一维等差数字源向两侧扩展，其他模式重复；保留源值；每次最多生成 1,000,000 个非空结果，超限整批回滚                                                                                                          |
 | `defineName(name, sheetId, range)`                                         | 工作簿级名称，不区分大小写                                                                                                                              |
 | `find(sheetId, search, matchCase?)`                                        | 检索值，最多返回 1,000 个位置                                                                                                                           |
 | `findNext(sheetId, search, { after?, matchCase?, entireCell? }?)`          | 按行、列顺序返回下一个匹配或 null；after 为 A1 地址，从其后搜索，末尾回绕；包括动态数组结果，不受 find 的 1,000 条上限限制                              |
@@ -102,9 +102,9 @@ await workbook.dispose();
 
 - `importXlsx(Blob | ArrayBuffer | Uint8Array, { signal? }?)`：在临时工作簿中解析和重算，成功后替换当前数据并清空历史；失败/取消保持原数据。
 - `exportXlsx({ allowLossy?, signal? }?)`：返回 `{ data: Uint8Array, diagnostics }`。存在已知内容损失时默认拒绝并携带 diagnostics，调用方确认后设置 allowLossy=true。
-- `exportJSON()` / `importJSON(snapshot, { signal? }?)`：版本为 1 的可序列化快照，保存原始值、公式、样式、工作表属性及兼容性诊断，不保存操作历史或公式旧缓存。
+- `exportJSON()` / `importJSON(snapshot, { signal? }?)`：版本为 1 的可序列化快照，保存原始值、公式、样式、工作表属性及兼容性诊断，不保存操作历史或公式旧缓存。exportJSON 分块传输开始捕获时的状态，期间后续编辑不会混入该快照。
 - `importCsv(text, { sheetId?, start?, delimiter?, columns?, header?, signal? }?)`：默认从 A1 写入；未指定列类型仍保留为文本。`columns` 逐列指定 `auto/text/number/date/boolean/percent`，`header=true` 保持首行为文本；类型转换失败整批回滚。自动类型保留前导零和超过 15 位的数字标识；日期仅接受明确 ISO 格式。来源文件中的公式形文本不执行。界面提供编码、分隔符、十行预览和列类型选择。
-- `exportCsv(sheetId, { range?, delimiter?, signal? }?)`：返回 `{ text, diagnostics }`，只导出单表计算值，带 UTF-8 BOM。
+- `exportCsv(sheetId, { range?, delimiter?, signal? }?)`：返回 `{ text, diagnostics }`，只导出单表计算值，带 UTF-8 BOM。默认范围按值、公式和溢出结果确定，纯格式不扩大范围。逐行生成，约每 20,000 格或 8 ms 检查进度与取消；返回的文本仍须完整驻留内存。超过 64 Mi 个 UTF-16 代码单元时抛出 `WorkbookError`（`code: "RESOURCE_LIMIT"`），请指定较小的 `range` 或使用 XLSX；失败及取消不改变工作簿。
 - `getDiagnostics()`：返回导入兼容性诊断和当前未知公式/循环依赖诊断。
 
 从 `onlineexcel/xlsx` 可独立调用 `readXlsx(data, options)` 和 `writeXlsx(snapshot, options)`，options 支持 signal / onProgress。顶层 Workbook API 在 Worker 内执行这些操作。

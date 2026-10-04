@@ -287,6 +287,8 @@ export default {
     array: "配列",
   },
   errors: {
+    "CSV output exceeds 64 Mi UTF-16 code units; export a smaller range or use XLSX":
+      "CSV が大きすぎます。出力範囲を小さくするか、XLSX を使用してください。",
     "Zoom must be between 0.5 and 2":
       "倍率は 50% から 200% の範囲で指定してください",
     "Resolve saved draft recovery before saving":

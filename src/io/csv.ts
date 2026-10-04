@@ -46,22 +46,35 @@ export function parseCsv(input: string, delimiter = ","): string[][] {
   const width = rows.reduce((n, row) => Math.max(n, row.length), 0);
   return rows.map((row) => [...row, ...Array(width - row.length).fill("")]);
 }
-export function writeCsv(rows: InputValue[][], delimiter = ","): string {
+export class CsvSizeError extends Error {}
+export function writeCsvRow(
+  row: InputValue[],
+  delimiter = ",",
+  maxLength = Infinity,
+): string {
   if (delimiter.length !== 1 || /[\r\n"]/.test(delimiter))
     throw new Error("Invalid CSV delimiter");
+  let length = Math.max(0, row.length - 1);
   const escape = (value: InputValue) => {
     const text = value === null ? "" : String(value);
-    return text.includes(delimiter) || /[\r\n"]/.test(text)
-      ? '"' + text.replace(/"/g, '""') + '"'
-      : text;
+    const quoted = text.includes(delimiter) || /[\r\n"]/.test(text);
+    length += text.length + (quoted ? 2 : 0);
+    if (length > maxLength)
+      throw new CsvSizeError("CSV output exceeds its size limit");
+    if (quoted && Number.isFinite(maxLength))
+      for (let i = 0; i < text.length; i++)
+        if (text[i] === '"' && ++length > maxLength)
+          throw new CsvSizeError("CSV output exceeds its size limit");
+    return quoted ? '"' + text.replace(/"/g, '""') + '"' : text;
   };
-  return (
-    "\uFEFF" +
-    rows
-      .map((row) => {
-        const line = row.map(escape).join(delimiter);
-        return line === "" && row.length === 1 ? '""' : line;
-      })
-      .join("\r\n")
-  );
+  const line = row.map(escape).join(delimiter);
+  const result = line === "" && row.length === 1 ? '""' : line;
+  if (result.length > maxLength)
+    throw new CsvSizeError("CSV output exceeds its size limit");
+  return result;
+}
+export function writeCsv(rows: InputValue[][], delimiter = ","): string {
+  // Validate even when the input contains no rows.
+  writeCsvRow([], delimiter);
+  return "\uFEFF" + rows.map((row) => writeCsvRow(row, delimiter)).join("\r\n");
 }

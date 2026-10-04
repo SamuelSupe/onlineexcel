@@ -1,6 +1,8 @@
 import { formatSections, numberSection, fractionText } from "./number-format";
 import type { CellStyle, Scalar } from "./types";
 import { isError, serialDate } from "../formula/values";
+// At most 2 × 21 × 21 combinations; reuse Intl instances across visible cells and paints.
+const numberFormatters = new Map<string, Intl.NumberFormat>();
 export function formatValue(
   value: Scalar,
   style: CellStyle = {},
@@ -102,11 +104,20 @@ export function formatValue(
   const percent = (stripped.match(/%/g) ?? []).length,
     decimals = /\.([0#]+)/.exec(stripped)?.[1] ?? "";
   const n = Math.abs(value) * 100 ** percent;
-  let result = n.toLocaleString("en-US", {
-    useGrouping: /[0#],[0#]/.test(stripped),
-    minimumFractionDigits: Math.min(20, (decimals.match(/0/g) ?? []).length),
-    maximumFractionDigits: Math.min(20, decimals.length),
-  });
+  const useGrouping = /[0#],[0#]/.test(stripped),
+    minimumFractionDigits = Math.min(20, (decimals.match(/0/g) ?? []).length),
+    maximumFractionDigits = Math.min(20, decimals.length),
+    formatterKey = `${useGrouping}:${minimumFractionDigits}:${maximumFractionDigits}`;
+  let formatter = numberFormatters.get(formatterKey);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      useGrouping,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+    numberFormatters.set(formatterKey, formatter);
+  }
+  let result = formatter.format(n);
   const prefix =
     /^([^0#?]*)(?:[0#?])/
       .exec(section)?.[1]

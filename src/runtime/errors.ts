@@ -11,6 +11,7 @@ export type WorkbookErrorCode =
   | "SERIALIZATION_FAILED"
   | "LOSSY_EXPORT"
   | "MODULE_FAILED"
+  | "RESOURCE_LIMIT"
   | "REVISION_CONFLICT";
 export interface ErrorContext {
   operation?: string;
