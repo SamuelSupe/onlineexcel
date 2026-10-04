@@ -10,18 +10,18 @@
 
 [下载版本](https://github.com/SamuelSupe/onlineexcel/releases) · [接入指南](docs/sdk.md) · [API](docs/api.md) · [验证记录](docs/validation.md)
 
-GitHub `main` 已包含 2026-10-03 的性能与一致性修复，详见[验收记录](docs/validation.md#性能-p0p1-修复审计2026-10-03)。npm 和正式 GitHub Release 仍为 0.1.1，尚未包含这些修复；体验当前源码请按下方“本地运行”构建。
+GitHub Release **v0.1.2** 包含 2026-10-03 的性能与一致性修复，详见[验收记录](docs/validation.md)。npm registry 仍为 0.1.1；请下载下方 GitHub 安装包使用最新版。
 
 ## 安装发布包
 
-在宿主应用中安装 [npm 包](https://www.npmjs.com/package/onlineexcel)：
+从 [GitHub Release v0.1.2](https://github.com/SamuelSupe/onlineexcel/releases/tag/v0.1.2) 下载 `onlineexcel-0.1.2.tgz`，然后在宿主应用中安装：
 
 ```sh
-npm install onlineexcel
+npm install ./onlineexcel-0.1.2.tgz
 npx onlineexcel-copy-assets public/onlineexcel
 ```
 
-然后通过 `import { createWorkbook, mountEditor } from "onlineexcel"` 接入，并配置 `workerUrl: "/onlineexcel/worker.js"`。发布包包含 ESM、浏览器脚本、Worker、类型声明和 React/Vue 可选入口。也可以从 [GitHub Releases](https://github.com/SamuelSupe/onlineexcel/releases) 下载 `.tgz`，使用 `npm install ./onlineexcel-0.1.1.tgz` 安装；离线分发包的校验文件见对应 Release 的 `SHA256SUMS`。
+然后通过 `import { createWorkbook, mountEditor } from "onlineexcel"` 接入，并配置 `workerUrl: "/onlineexcel/worker.js"`。发布包包含 ESM、浏览器脚本、Worker、类型声明和 React/Vue 可选入口。也可以从 [GitHub Releases](https://github.com/SamuelSupe/onlineexcel/releases) 下载 `.tgz`，使用 `npm install ./onlineexcel-0.1.2.tgz` 安装；离线分发包的校验文件见对应 Release 的 `SHA256SUMS`。`npm install onlineexcel` 目前仍安装 0.1.1。升级时须一起部署同版本的主库、Worker 和共享 chunk；0.1.2 使用 Worker 协议 2。
 
 ## 本地运行
 

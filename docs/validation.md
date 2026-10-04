@@ -247,3 +247,17 @@ OrbStack 的冻结源码复制到容器本地磁盘后，228 项测试、类型�
 | 发布边界 | 本轮只更新本地源码与未发布候选包；原 artifacts/onlineexcel-0.1.1.tgz SHA-256 保持 d48caded02eb55ada232e451d972b7ae61a0d8a1e43aaba78c3987b83a187cd6。 |
 
 收尾检查：最终源码的 Chrome 完整交互回归通过，自动行高原复现流程通过；实际在 M20 输入 `=SUM(2,3)`，公式模式提示显示，提交得到 5，撤销恢复为空。最终代码实际安装后的 ESM/IIFE、模块入口、声明、文件往返，以及原生 JS、React、Vue、CSP 全部通过，页面与控制台无错误。除上文明确列出的非本轮实机项目及高负载失败记录外，本轮确认的 P0/P1 均有修复和行为证据。
+
+## Release verification: v0.1.2 (2026-10-04)
+
+This GitHub release packages the October 3 performance/correctness fixes and the English README with editor screenshots. The library version is 0.1.2 and the Worker protocol is 2; deploy the main library, Worker, and shared chunks together. npm remains at 0.1.1; install the 0.1.2 GitHub archive to use this release.
+
+Fresh release checks:
+
+- OrbStack / Linux arm64 / Node 24.21.0: TypeScript checking, all 228 behavior tests (41 model, 157 formula, 17 runtime, 13 file), and ESM/IIFE/Worker/adapter/declaration builds passed. Tests ran with one Vitest worker and unchanged assertions/timeouts.
+- Local Chrome: the complete built-package interaction suite passed, including five locales, formula editing, office operations, persistence/recovery, lifecycle, cancellation, and import/export. No relevant console warnings or errors were observed.
+- A production build from an actually installed 0.1.2 archive passed the native JavaScript, React StrictMode, Vue, Worker extension, and strict-CSP integration suite. No window errors, rejected promises, or CSP faults were reported. The example build warns about a combined bundle above 500 kB; it includes the test harness and both frameworks.
+- Independent package installation passed ESM/IIFE export parity, core/editor/XLSX entry points and file round-trip, plus TypeScript consumer compilation. The initial npm request encountered `SELF_SIGNED_CERT_IN_CHAIN`; that retry was stopped, and the check passed with `NODE_USE_SYSTEM_CA=1`. TLS verification was not disabled.
+- Package contents include both READMEs, the two English screenshots, browser/Worker assets, declarations, and the framework adapters. Final distribution verification compares runtime/source bytes with the browser-tested archive and checks SHA-256 before publication.
+
+These checks do not remeasure the million-cell performance baseline or repeat the independent openpyxl fixture run. Those results retain their October 3 scope above. Desktop Excel, other browsers, operating-system IME candidate windows, and whole-browser peak memory remain unverified.

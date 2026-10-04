@@ -1,13 +1,15 @@
 # 宿主集成与 SDK 契约
 
-这些接口在 0.1.1 开发包中提供。原有 API 保持可用；React 和 Vue 是独立可选入口，核心包仍只依赖 fflate 和 saxes。
+本文对应 GitHub Release 0.1.2。npm registry 仍为 0.1.1；最新版需先从 GitHub Release 下载安装包。原有 API 保持可用；React 和 Vue 是独立可选入口，核心包仍只依赖 fflate 和 saxes。
 
 ## 安装与 Worker 部署
 
 ```sh
-npm install onlineexcel
+npm install ./onlineexcel-0.1.2.tgz
 npx onlineexcel-copy-assets public/onlineexcel
 ```
+
+从 [GitHub Release v0.1.2](https://github.com/SamuelSupe/onlineexcel/releases/tag/v0.1.2) 下载上述安装包。0.1.2 使用 Worker 协议 2，主库与 Worker 必须来自同一个版本。
 
 命令复制浏览器脚本、Worker 和依赖的 chunk 文件，不删除目标目录已有文件。每次更新安装包后重新复制，整组资源一起部署；Worker 必须由同源地址或符合浏览器策略的部署路径加载，不能通过 `file://` 运行。
 

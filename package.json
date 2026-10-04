@@ -1,6 +1,6 @@
 {
   "name": "onlineexcel",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Embeddable browser spreadsheet with a self-contained calculation engine",
   "repository": {
     "type": "git",
@@ -53,6 +53,7 @@
   "files": [
     "dist",
     "README.md",
+    "README.zh-CN.md",
     "docs",
     "LICENSE",
     "examples",

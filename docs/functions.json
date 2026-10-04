@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "libraryVersion": "0.1.1",
+  "libraryVersion": "0.1.2",
   "functions": [
     {
       "name": "ABS",

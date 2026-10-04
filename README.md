@@ -10,7 +10,7 @@ An embeddable spreadsheet for browser applications, written in TypeScript. Onlin
 
 *The standalone JavaScript example running in Chrome, populated with sample sales data. All processing stays in the browser.*
 
-> This is a 0.1-series spreadsheet library for everyday office workflows. See the [compatibility matrix](docs/compatibility.md) for supported features and limitations. GitHub `main` includes the October 3, 2026 performance and consistency fixes; npm and the latest tagged GitHub Release remain at 0.1.1 and do not include those fixes. Build from source to use the current implementation.
+> This is a 0.1-series spreadsheet library for everyday office workflows. See the [compatibility matrix](docs/compatibility.md) for supported features and limitations. GitHub Release **v0.1.2** includes the October 3, 2026 performance and consistency fixes. Install its archive below to use this version; the npm registry remains at 0.1.1.
 
 ## Features
 
@@ -27,14 +27,16 @@ Desktop browsers and keyboard/mouse workflows are the primary target. Charts, pi
 
 ## Install
 
+Download `onlineexcel-0.1.2.tgz` from [GitHub Release v0.1.2](https://github.com/SamuelSupe/onlineexcel/releases/tag/v0.1.2), then run:
+
 ```sh
-npm install onlineexcel
+npm install ./onlineexcel-0.1.2.tgz
 npx onlineexcel-copy-assets public/onlineexcel
 ```
 
 The package includes ESM, a browser script, a separate Worker, TypeScript declarations, and optional React/Vue entry points. Configure `workerUrl: "/onlineexcel/worker.js"` after copying the assets.
 
-You can also download a `.tgz` from [GitHub Releases](https://github.com/SamuelSupe/onlineexcel/releases) and install it with `npm install ./onlineexcel-0.1.1.tgz`. Each release includes `SHA256SUMS` for its downloadable archives.
+Each release includes `SHA256SUMS` for its downloadable archives. `npm install onlineexcel` currently installs the older npm release, 0.1.1. When upgrading, deploy the main library, Worker, and shared chunks from the same release together; v0.1.2 uses Worker protocol 2.
 
 ## Embed in an application
 
